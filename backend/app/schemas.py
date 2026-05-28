@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models import Role
+from app.models import RiskLevel, Role
 
 
 class RegisterRequest(BaseModel):
@@ -47,3 +47,51 @@ class UserRead(BaseModel):
 
 class ConsentRequest(BaseModel):
     consent_given: bool = True
+
+
+# --- Questionnaire & scoring ---
+
+
+class QuestionOut(BaseModel):
+    index: int
+    text: str
+    component: str
+    reverse: bool
+
+
+class AnswerIn(BaseModel):
+    question_index: int = Field(ge=1, le=15)
+    value: int = Field(ge=1, le=5)
+
+
+class QuestionnaireSubmit(BaseModel):
+    type: str = "burnout"
+    answers: list[AnswerIn] = Field(min_length=1)
+
+
+class ComponentScoreOut(BaseModel):
+    component: str
+    label: str
+    weight: float
+    score: float
+    question_indices: list[int]
+
+
+class QuestionnaireResult(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    type: str
+    submitted_at: datetime
+    burnout_pressure_score: float
+    risk_level: RiskLevel
+    components: list[ComponentScoreOut]
+
+
+class HistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    type: str
+    submitted_at: datetime
+    burnout_pressure_score: float | None
+    risk_level: RiskLevel | None
