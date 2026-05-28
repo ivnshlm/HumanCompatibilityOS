@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+# Make the `app` package importable when running the `pytest` console script
+# (the bare `pytest` command does not add cwd to sys.path the way `python -m pytest` does).
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
