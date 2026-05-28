@@ -47,9 +47,11 @@ FastAPI · SQLAlchemy 2.0 · psycopg3 · PostgreSQL · Next.js · Tailwind · Do
 Репозиторий, docker-compose (Postgres), backend skeleton (config/db/main/health),
 frontend skeleton (Next.js + Tailwind, заглушка дашборда), CI, README, ROADMAP.
 
-### Фаза 1 — Данные + Auth/RBAC
-Модели SQLAlchemy всех таблиц, Pydantic-схемы, JWT + refresh, 5 ролей,
-видимость по ролям, аудит-лог, сбор согласия. `POST /auth/login`.
+### Фаза 1 — Данные + Auth/RBAC ✅
+Модели SQLAlchemy всех таблиц (+ audit_logs), Pydantic-схемы, JWT + refresh,
+5 ролей, RBAC-зависимость `require_roles`, аудит-лог, сбор согласия.
+Эндпоинты: `POST /auth/register`, `/auth/login`, `/auth/refresh`,
+`GET /auth/me`, `POST /auth/consent`.
 
 ### Фаза 2 — Опросник + Scoring Engine (ядро MVP)
 15-вопросный опросник (сид), `POST /questionnaire/submit`, движок подсчёта
