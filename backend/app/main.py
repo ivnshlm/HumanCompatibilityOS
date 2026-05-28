@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from app.config import get_settings
 from app.db import init_db
-from app.routers import auth, health
+from app.routers import auth, health, questionnaire
 
 settings = get_settings()
 logging.basicConfig(level=settings.log_level)
@@ -27,6 +27,7 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(questionnaire.router)
 
 
 @app.get("/")

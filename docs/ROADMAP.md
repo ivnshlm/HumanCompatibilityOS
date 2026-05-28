@@ -53,10 +53,14 @@ frontend skeleton (Next.js + Tailwind, заглушка дашборда), CI, R
 Эндпоинты: `POST /auth/register`, `/auth/login`, `/auth/refresh`,
 `GET /auth/me`, `POST /auth/consent`.
 
-### Фаза 2 — Опросник + Scoring Engine (ядро MVP)
-15-вопросный опросник (сид), `POST /questionnaire/submit`, движок подсчёта
-(формула + 5 саб-компонентов), пороги риска, объяснимость. Юнит-тесты формулы.
-`GET /employee/{id}/history`. UI: форма опросника.
+### Фаза 2 — Опросник + Scoring Engine (ядро MVP) ✅
+15-вопросный опросник (RU), `GET /questionnaire/questions`,
+`POST /questionnaire/submit`, движок подсчёта (`scoring.py`: формула +
+5 саб-компонентов с RU-метками, ориентация reverse-вопросов), пороги риска,
+объяснимый результат по компонентам. Юнит-тесты формулы + тесты эндпоинтов
+(consent 403, scoring, RBAC). `GET /employee/{id}/history`.
+UI: страница логина, форма опросника (шкала 1–5) с явным согласием,
+экран результата с разбором по компонентам.
 
 ### Фаза 3 — Дашборд (телеметрия)
 `GET /dashboard/team/{id}`, `GET /environment/metrics`, агрегаты 4 блоков,

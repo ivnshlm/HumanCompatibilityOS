@@ -13,6 +13,20 @@ export default function Home() {
         <p className="mt-2 text-sm opacity-70">
           Мониторинг выгорания и устойчивости среды. «Среда важнее героизма.»
         </p>
+        <nav className="mt-5 flex gap-3 text-sm">
+          <a
+            href="/login"
+            className="rounded-lg bg-white/90 px-4 py-2 font-medium text-black"
+          >
+            Войти
+          </a>
+          <a
+            href="/questionnaire"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Пройти опросник
+          </a>
+        </nav>
       </header>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
