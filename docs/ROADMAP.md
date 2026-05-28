@@ -1,0 +1,75 @@
+# Human Compatibility OS — Дорожная карта разработки
+
+Источник: канонический пакет документов v10 (Fabrika Sredy / Human Compatibility OS).
+Разработка ведётся пофазно, full-stack. UI — на русском.
+
+## Принципы продукта (жёсткие ограничения)
+
+- **Explainability-first** — каждый вывод объясним и проверяем.
+- **Никаких автоматических решений** — светофор-индикаторы не являются единственным
+  основанием для отказа, увольнения или иного кадрового действия.
+- **Обязательная проверка человеком** для всех выводов.
+- **Явное согласие** на сбор операционных данных + прозрачность.
+- **Аудит и анти-слежка** — система не превращается в скрытый профайлинг.
+- Оценивается **операционная совместимость и устойчивость среды**, а не ценность человека.
+
+## Стек
+
+FastAPI · SQLAlchemy 2.0 · psycopg3 · PostgreSQL · Next.js · Tailwind · Docker Compose · Nginx · GitHub Actions.
+
+## Доменное ядро (из спецификации)
+
+- **Роли (RBAC):** Employee, HR, Team Lead, Founder/Admin, Ethics Reviewer · JWT + refresh.
+- **Опросник:** 15 вопросов, шкала 1–5.
+- **Формула Burnout Pressure:**
+  `Emergency*0.30 + RecoveryDeficit*0.25 + CommOverload*0.20 + Interruption*0.15 + LeadershipInstability*0.10`
+- **Пороги риска:** 0.0–1.9 Low · 2.0–3.4 Medium · 3.5–5.0 High.
+- **Блоки дашборда:** Burnout Pressure · Recovery Sustainability · Communication Entropy · Leadership Stability.
+- **Цикл рекалибровки:** Baseline → 30 дней → 90 дней → ретроспектива.
+- **Таблицы БД:** users, questionnaires, questionnaire_answers, calibration_reviews,
+  recalibration_events, environment_metrics (UUID PK, timestamps, индексы, FK).
+
+## API-эндпоинты (целевые)
+
+| Метод | Путь                          | Фаза |
+|-------|-------------------------------|------|
+| GET   | /health                       | 0    |
+| POST  | /auth/login                   | 1    |
+| POST  | /questionnaire/submit         | 2    |
+| GET   | /employee/{id}/history        | 2    |
+| GET   | /dashboard/team/{id}          | 3    |
+| GET   | /environment/metrics          | 3    |
+| POST  | /recalibration/create         | 4    |
+
+## Фазы
+
+### Фаза 0 — Каркас ✅
+Репозиторий, docker-compose (Postgres), backend skeleton (config/db/main/health),
+frontend skeleton (Next.js + Tailwind, заглушка дашборда), CI, README, ROADMAP.
+
+### Фаза 1 — Данные + Auth/RBAC
+Модели SQLAlchemy всех таблиц, Pydantic-схемы, JWT + refresh, 5 ролей,
+видимость по ролям, аудит-лог, сбор согласия. `POST /auth/login`.
+
+### Фаза 2 — Опросник + Scoring Engine (ядро MVP)
+15-вопросный опросник (сид), `POST /questionnaire/submit`, движок подсчёта
+(формула + 5 саб-компонентов), пороги риска, объяснимость. Юнит-тесты формулы.
+`GET /employee/{id}/history`. UI: форма опросника.
+
+### Фаза 3 — Дашборд (телеметрия)
+`GET /dashboard/team/{id}`, `GET /environment/metrics`, агрегаты 4 блоков,
+anonymized analytics mode, RBAC-видимость. UI: дашборд с реальными данными.
+
+### Фаза 4 — Движок рекалибровки
+`POST /recalibration/create`, циклы 30/90 дней, сравнение с baseline, тренды,
+development-рекомендации. UI: история и review-экран.
+
+### Фаза 5 — Полировка фронтенда
+UX, светофоры с дисклеймерами, экран calibration review для HR/Team Lead.
+
+### Фаза 6 — Этика/комплаенс + пилот
+Проверки «нет авто-решений», экспорт для human review, аудит,
+инструкции пилота (3–5 кейсов), метрики (−20% emergency pressure за 90 дней).
+
+### Позже — Расширение: Compatibility Hiring
+Quick Screen, Full Calibration, Interview Guide, Development Plan (из HR Workbook v6).
