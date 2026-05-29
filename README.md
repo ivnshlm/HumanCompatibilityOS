@@ -39,6 +39,7 @@ docker compose up --build
 # frontend: http://localhost:3000
 ```
 
-## Дорожная карта
+## Дорожная карта и статус
 
-См. [docs/ROADMAP.md](docs/ROADMAP.md). Разработка ведётся пофазно.
+- [docs/ROADMAP.md](docs/ROADMAP.md) — пофазный план разработки.
+- [docs/STATUS.md](docs/STATUS.md) — что сделано / что осталось + как продолжить на другом компе.
