@@ -95,3 +95,64 @@ class HistoryItem(BaseModel):
     submitted_at: datetime
     burnout_pressure_score: float | None
     risk_level: RiskLevel | None
+
+
+# --- Dashboard (telemetry) ---
+
+
+class BlockAggregateOut(BaseModel):
+    block: str
+    label: str
+    label_en: str
+    score: float
+    risk_level: RiskLevel
+    distribution: dict[str, int]
+
+
+class TeamDashboardOut(BaseModel):
+    team_id: uuid.UUID
+    generated_at: datetime
+    cohort_size: int
+    sufficient_data: bool
+    interpretation: str
+    blocks: list[BlockAggregateOut]
+    notice: str | None = None
+
+
+# --- Environment metrics ---
+
+
+class EnvironmentMetricIn(BaseModel):
+    metric_type: str = Field(min_length=1, max_length=80)
+    value: float
+    team_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+
+
+class EnvironmentMetricOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    metric_type: str
+    value: float
+    team_id: uuid.UUID | None
+    user_id: uuid.UUID | None
+    period_start: datetime | None
+    period_end: datetime | None
+    created_at: datetime
+
+
+class MetricAggregateOut(BaseModel):
+    metric_type: str
+    count: int
+    mean: float
+    minimum: float
+    maximum: float
+
+
+class EnvironmentMetricsResponse(BaseModel):
+    team_id: uuid.UUID | None = None
+    metric_type: str | None = None
+    aggregates: list[MetricAggregateOut]

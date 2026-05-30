@@ -41,6 +41,51 @@ export interface QuestionnaireResult {
   components: ComponentScore[];
 }
 
+export type RiskLevel = "low" | "medium" | "high";
+
+export interface Me {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "employee" | "hr" | "team_lead" | "admin" | "ethics_reviewer";
+  team_id: string | null;
+  is_active: boolean;
+  consent_given: boolean;
+}
+
+export interface BlockAggregate {
+  block: string;
+  label: string;
+  label_en: string;
+  score: number;
+  risk_level: RiskLevel;
+  distribution: { low: number; medium: number; high: number };
+}
+
+export interface TeamDashboard {
+  team_id: string;
+  generated_at: string;
+  cohort_size: number;
+  sufficient_data: boolean;
+  interpretation: string;
+  blocks: BlockAggregate[];
+  notice: string | null;
+}
+
+export interface MetricAggregate {
+  metric_type: string;
+  count: number;
+  mean: number;
+  minimum: number;
+  maximum: number;
+}
+
+export interface EnvironmentMetrics {
+  team_id: string | null;
+  metric_type: string | null;
+  aggregates: MetricAggregate[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -79,4 +124,17 @@ export function submitQuestionnaire(
     method: "POST",
     body: JSON.stringify({ answers }),
   });
+}
+
+export function fetchMe(): Promise<Me> {
+  return request("/auth/me");
+}
+
+export function fetchTeamDashboard(teamId: string): Promise<TeamDashboard> {
+  return request(`/dashboard/team/${teamId}`);
+}
+
+export function fetchEnvironmentMetrics(teamId?: string): Promise<EnvironmentMetrics> {
+  const qs = teamId ? `?team_id=${encodeURIComponent(teamId)}` : "";
+  return request(`/environment/metrics${qs}`);
 }
