@@ -11,12 +11,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.dashboard import BLOCK_LABELS_RU, DashboardBlock
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import Questionnaire, RecalibrationCycle, RecalibrationEvent, Role, User
-from app.pilot import PILOT_TARGET_PCT, compute_pilot_metric, emergency_pressure
-from app.schemas import CompliancePolicyOut, PilotMetricOut
-from app.scoring import compute_burnout_score
+from app.pilot import PILOT_TARGET_PCT, compute_pilot_report
+from app.schemas import CompliancePolicyOut, MetricChangeOut, PilotMetricOut
+from app.scoring import BurnoutResult, compute_burnout_score
+
+# Human-readable labels for the pilot metric keys.
+_METRIC_LABELS_RU: dict[str, str] = {
+    "emergency_pressure": "Давление аврала",
+    **{b.value: BLOCK_LABELS_RU[b] for b in DashboardBlock},
+}
 
 router = APIRouter(tags=["compliance"])
 
@@ -50,7 +57,7 @@ def compliance_policy(user: User = Depends(get_current_user)) -> CompliancePolic
     )
 
 
-def _emergency_for(db: Session, questionnaire_id: uuid.UUID | None) -> float | None:
+def _result_for(db: Session, questionnaire_id: uuid.UUID | None) -> BurnoutResult | None:
     if questionnaire_id is None:
         return None
     questionnaire = db.get(Questionnaire, questionnaire_id)
@@ -58,7 +65,7 @@ def _emergency_for(db: Session, questionnaire_id: uuid.UUID | None) -> float | N
         return None
     answers = {a.question_index: a.value for a in questionnaire.answers}
     try:
-        return emergency_pressure(compute_burnout_score(answers))
+        return compute_burnout_score(answers)
     except ValueError:
         return None
 
@@ -81,7 +88,7 @@ def pilot_metric(
         )
 
     members = db.scalars(select(User).where(User.team_id == team_id)).all()
-    pairs: list[tuple[float, float]] = []
+    pairs: list[tuple[BurnoutResult, BurnoutResult]] = []
     for member in members:
         baseline_event = db.scalar(
             select(RecalibrationEvent)
@@ -103,22 +110,31 @@ def pilot_metric(
         )
         if baseline_event is None or day90_event is None:
             continue
-        base = _emergency_for(db, baseline_event.questionnaire_id)
-        latest = _emergency_for(db, day90_event.questionnaire_id)
+        base = _result_for(db, baseline_event.questionnaire_id)
+        latest = _result_for(db, day90_event.questionnaire_id)
         if base is None or latest is None:
             continue
         pairs.append((base, latest))
 
-    metric = compute_pilot_metric(pairs)
+    report = compute_pilot_report(pairs)
+
+    def _out(mc) -> MetricChangeOut:
+        return MetricChangeOut(
+            key=mc.key,
+            label=_METRIC_LABELS_RU.get(mc.key, mc.key),
+            baseline_mean=mc.baseline_mean,
+            latest_mean=mc.latest_mean,
+            pct_change=mc.pct_change,
+            improved=mc.improved,
+        )
+
     return PilotMetricOut(
         team_id=team_id,
-        metric="emergency_pressure_reduction_90d",
-        cohort_size=metric.cohort_size,
-        sufficient_data=metric.sufficient_data,
-        baseline_mean=metric.baseline_mean,
-        latest_mean=metric.latest_mean,
-        pct_change=metric.pct_change,
-        target_pct=metric.target_pct,
-        target_met=metric.target_met,
-        notice=metric.notice,
+        cohort_size=report.cohort_size,
+        sufficient_data=report.sufficient_data,
+        target_pct=report.target_pct,
+        target_met=report.target_met,
+        headline=_out(report.headline) if report.headline else None,
+        blocks=[_out(b) for b in report.blocks],
+        notice=report.notice,
     )

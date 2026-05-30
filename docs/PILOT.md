@@ -9,10 +9,13 @@
 
 **Снижение «Давления аврала» (emergency pressure) ≥ 20% за 90 дней** по команде.
 
-- Считается по компоненту `emergency_pressure` (вопросы 1, 5, 11).
+- Headline считается по компоненту `emergency_pressure` (вопросы 1, 5, 11).
 - Endpoint: `GET /compliance/pilot-metric/team/{team_id}` — сравнивает среднее
-  значение в цикле `baseline` со средним в цикле `day_90`, возвращает `pct_change`
-  и `target_met` (порог −20%).
+  значение в цикле `baseline` со средним в цикле `day_90`. Возвращает:
+  - `headline` — emergency pressure: `pct_change` + `target_met` (порог −20%);
+  - `blocks` — изменение всех 4 блоков среды (Burnout Pressure, Recovery
+    Sustainability, Communication Entropy, Leadership Stability): `pct_change` и
+    флаг `improved` (снижение по шкале «концерна» = улучшение).
 - Метрика подавляется при выборке < 3 участников (анти-слежка).
 
 ## Жёсткие ограничения (проверяемы)
