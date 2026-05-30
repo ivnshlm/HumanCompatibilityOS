@@ -147,6 +147,29 @@ export interface ReviewInput {
   notes?: string | null;
 }
 
+export interface AuditEntry {
+  id: string;
+  actor_user_id: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface PilotMetric {
+  team_id: string;
+  metric: string;
+  cohort_size: number;
+  sufficient_data: boolean;
+  baseline_mean: number | null;
+  latest_mean: number | null;
+  pct_change: number | null;
+  target_pct: number;
+  target_met: boolean;
+  notice: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -232,4 +255,16 @@ export function createReview(input: ReviewInput): Promise<CalibrationReview> {
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export function fetchAudit(limit = 100): Promise<AuditEntry[]> {
+  return request(`/audit?limit=${limit}`);
+}
+
+export function fetchPilotMetric(teamId: string): Promise<PilotMetric> {
+  return request(`/compliance/pilot-metric/team/${teamId}`);
+}
+
+export function exportEmployee(employeeId: string): Promise<unknown> {
+  return request(`/export/employee/${employeeId}`);
 }

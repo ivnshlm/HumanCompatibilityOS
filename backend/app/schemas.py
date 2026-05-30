@@ -226,3 +226,50 @@ class CalibrationReviewOut(BaseModel):
     source_of_evidence: str | None
     notes: str | None
     created_at: datetime
+
+
+# --- Ethics / compliance / pilot (Phase 6) ---
+
+
+class AuditLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    actor_user_id: uuid.UUID | None
+    action: str
+    entity_type: str | None
+    entity_id: str | None
+    detail: dict | None
+    created_at: datetime
+
+
+class CompliancePolicyOut(BaseModel):
+    principles: list[str]
+    no_automated_decisions: bool
+    requires_consent: bool
+    requires_human_review: bool
+    pilot_metric: str
+    pilot_target_pct: float
+    disclaimer: str
+
+
+class PilotMetricOut(BaseModel):
+    team_id: uuid.UUID
+    metric: str
+    cohort_size: int
+    sufficient_data: bool
+    baseline_mean: float | None
+    latest_mean: float | None
+    pct_change: float | None
+    target_pct: float
+    target_met: bool
+    notice: str | None = None
+
+
+class ExportBundleOut(BaseModel):
+    generated_at: datetime
+    disclaimer: str
+    user: UserRead
+    questionnaires: list[HistoryItem]
+    recalibration: RecalibrationTimelineOut
+    calibration_reviews: list[CalibrationReviewOut]

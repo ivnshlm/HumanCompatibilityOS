@@ -92,9 +92,16 @@ ethics — все), `POST /calibration/review` и `GET /calibration/review/{subj
 опросников, прошлые review, форма нового review с источником данных). Общий
 модуль светофоров `lib/risk.ts`, дисклеймеры на всех экранах.
 
-### Фаза 6 — Этика/комплаенс + пилот
-Проверки «нет авто-решений», экспорт для human review, аудит,
-инструкции пилота (3–5 кейсов), метрики (−20% emergency pressure за 90 дней).
+### Фаза 6 — Этика/комплаенс + пилот ✅
+`GET /compliance/policy` (машиночитаемая доктрина: no_automated_decisions,
+requires_consent, requires_human_review + определение пилот-метрики),
+`GET /compliance/pilot-metric/team/{id}` (KPI: emergency pressure baseline → day_90,
+%change vs −20%, cohort-suppressed, `app/pilot.py`), `GET /audit` (журнал для
+oversight-ролей admin/ethics_reviewer), `GET /export/employee/{id}` (полный
+объяснимый пакет для human review: профиль + опросники + рекалибровка + reviews;
+self или ревьюер; аудируется). UI: `/audit`, пилотная KPI-карточка на дашборде,
+кнопка экспорта на `/review`. Документ пилота — [docs/PILOT.md](PILOT.md) (метрика
+успеха, жёсткие ограничения, цикл, 3–5 кейсов).
 
 ### Позже — Расширение: Compatibility Hiring
 Quick Screen, Full Calibration, Interview Guide, Development Plan (из HR Workbook v6).

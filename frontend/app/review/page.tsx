@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import {
   createReview,
+  exportEmployee,
   fetchEmployeeHistory,
   fetchMe,
   fetchReviews,
@@ -77,6 +78,23 @@ export default function ReviewPage() {
       }
     })();
   }, [router]);
+
+  async function onExport() {
+    if (!subjectId) return;
+    setError(null);
+    try {
+      const bundle = await exportEmployee(subjectId);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `export-${subjectId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка экспорта");
+    }
+  }
 
   async function onSelectSubject(id: string) {
     setSubjectId(id);
@@ -159,7 +177,17 @@ export default function ReviewPage() {
 
       {subjectId && (
         <>
-          <section className="mt-8">
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={onExport}
+              className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5"
+            >
+              Экспорт для проверки (JSON)
+            </button>
+          </div>
+
+          <section className="mt-6">
             <h2 className="text-lg font-medium">История опросников</h2>
             {history.length > 0 ? (
               <div className="mt-3 space-y-2">

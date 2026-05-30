@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 import {
   fetchEnvironmentMetrics,
   fetchMe,
+  fetchPilotMetric,
   fetchTeamDashboard,
   getToken,
   type BlockAggregate,
   type EnvironmentMetrics,
   type Me,
+  type PilotMetric,
   type RiskLevel,
   type TeamDashboard,
 } from "@/lib/api";
@@ -77,6 +79,7 @@ export default function DashboardPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [dashboard, setDashboard] = useState<TeamDashboard | null>(null);
   const [metrics, setMetrics] = useState<EnvironmentMetrics | null>(null);
+  const [pilot, setPilot] = useState<PilotMetric | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -90,12 +93,14 @@ export default function DashboardPage() {
         const profile = await fetchMe();
         setMe(profile);
         if (!REVIEWER_ROLES.has(profile.role) || !profile.team_id) return;
-        const [dash, env] = await Promise.all([
+        const [dash, env, pm] = await Promise.all([
           fetchTeamDashboard(profile.team_id),
           fetchEnvironmentMetrics(profile.team_id),
+          fetchPilotMetric(profile.team_id).catch(() => null),
         ]);
         setDashboard(dash);
         setMetrics(env);
+        setPilot(pm);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ошибка загрузки");
       } finally {
@@ -152,6 +157,35 @@ export default function DashboardPage() {
             ))}
           </section>
         </>
+      )}
+
+      {pilot && pilot.sufficient_data && (
+        <section className="mt-10 rounded-xl border border-white/10 bg-white/5 p-5">
+          <h2 className="text-lg font-medium">Пилотная метрика — давление аврала за 90 дней</h2>
+          <div className="mt-3 flex flex-wrap items-end gap-6">
+            <div>
+              <div className="text-xs opacity-50">изменение</div>
+              <div
+                className={`text-3xl font-semibold ${
+                  pilot.target_met ? "text-emerald-400" : "text-amber-400"
+                }`}
+              >
+                {pilot.pct_change !== null
+                  ? `${pilot.pct_change > 0 ? "+" : ""}${pilot.pct_change}%`
+                  : "—"}
+              </div>
+            </div>
+            <div className="text-sm opacity-70">
+              base {pilot.baseline_mean?.toFixed(2)} → 90д {pilot.latest_mean?.toFixed(2)}
+            </div>
+            <div className="text-sm">
+              Цель {pilot.target_pct}%:{" "}
+              <span className={pilot.target_met ? "text-emerald-400" : "text-amber-400"}>
+                {pilot.target_met ? "достигнута" : "не достигнута"}
+              </span>
+            </div>
+          </div>
+        </section>
       )}
 
       {metrics && metrics.aggregates.length > 0 && (

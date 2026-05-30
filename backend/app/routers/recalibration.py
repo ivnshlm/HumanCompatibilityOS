@@ -149,18 +149,8 @@ def create_recalibration(
     )
 
 
-@router.get("/{user_id}", response_model=RecalibrationTimelineOut)
-def recalibration_timeline(
-    user_id: uuid.UUID,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> RecalibrationTimelineOut:
-    if not _can_access_subject(user, user_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not allowed to view this user's recalibration history",
-        )
-
+def build_timeline(db: Session, user_id: uuid.UUID) -> RecalibrationTimelineOut:
+    """Assemble a user's recalibration timeline (shared by the GET route and export)."""
     events = list(
         db.scalars(
             select(RecalibrationEvent)
@@ -217,3 +207,17 @@ def recalibration_timeline(
         recommendations=recommendations,
         events=event_outs,
     )
+
+
+@router.get("/{user_id}", response_model=RecalibrationTimelineOut)
+def recalibration_timeline(
+    user_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RecalibrationTimelineOut:
+    if not _can_access_subject(user, user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to view this user's recalibration history",
+        )
+    return build_timeline(db, user_id)
