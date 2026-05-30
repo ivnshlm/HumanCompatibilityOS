@@ -188,3 +188,41 @@ class RecalibrationTimelineOut(BaseModel):
     trend_label: str
     recommendations: list[str]
     events: list[RecalibrationEventOut]
+
+
+# --- User directory (reviewer-scoped) ---
+
+
+class UserSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    full_name: str
+    email: EmailStr
+    role: Role
+    team_id: uuid.UUID | None
+
+
+# --- Calibration review (human review of risk) ---
+
+
+class CalibrationReviewCreate(BaseModel):
+    subject_user_id: uuid.UUID
+    risk_level: RiskLevel | None = None
+    recommendation: str | None = Field(default=None, max_length=500)
+    action_items: str | None = Field(default=None, max_length=2000)
+    source_of_evidence: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class CalibrationReviewOut(BaseModel):
+    id: uuid.UUID
+    subject_user_id: uuid.UUID
+    reviewer_user_id: uuid.UUID | None
+    reviewer_name: str | None
+    risk_level: RiskLevel | None
+    recommendation: str | None
+    action_items: str | None
+    source_of_evidence: str | None
+    notes: str | None
+    created_at: datetime

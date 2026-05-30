@@ -38,6 +38,12 @@ export default function Home() {
           >
             Рекалибровка
           </a>
+          <a
+            href="/review"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Review
+          </a>
         </nav>
       </header>
 
