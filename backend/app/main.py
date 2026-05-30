@@ -14,6 +14,7 @@ from app.routers import (
     dashboard,
     export,
     health,
+    onboarding,
     questionnaire,
     recalibration,
     users,
@@ -56,6 +57,7 @@ app.include_router(calibration.router)
 app.include_router(audit.router)
 app.include_router(compliance.router)
 app.include_router(export.router)
+app.include_router(onboarding.router)
 
 
 @app.get("/")

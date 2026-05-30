@@ -177,6 +177,19 @@ export interface PilotMetric {
   notice: string | null;
 }
 
+export interface OnboardingHealth {
+  team_id: string;
+  window_days: number;
+  cohort_size: number;
+  sufficient_data: boolean;
+  new_hire_mean: number | null;
+  tenured_mean: number | null;
+  integration_friction: number | null;
+  friction_flag: boolean;
+  at_risk_count: number;
+  notice: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -270,6 +283,10 @@ export function fetchAudit(limit = 100): Promise<AuditEntry[]> {
 
 export function fetchPilotMetric(teamId: string): Promise<PilotMetric> {
   return request(`/compliance/pilot-metric/team/${teamId}`);
+}
+
+export function fetchOnboarding(teamId: string): Promise<OnboardingHealth> {
+  return request(`/onboarding/team/${teamId}`);
 }
 
 export function exportEmployee(employeeId: string): Promise<unknown> {

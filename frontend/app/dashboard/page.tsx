@@ -6,12 +6,14 @@ import { useEffect, useState } from "react";
 import {
   fetchEnvironmentMetrics,
   fetchMe,
+  fetchOnboarding,
   fetchPilotMetric,
   fetchTeamDashboard,
   getToken,
   type BlockAggregate,
   type EnvironmentMetrics,
   type Me,
+  type OnboardingHealth,
   type PilotMetric,
   type RiskLevel,
   type TeamDashboard,
@@ -80,6 +82,7 @@ export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<TeamDashboard | null>(null);
   const [metrics, setMetrics] = useState<EnvironmentMetrics | null>(null);
   const [pilot, setPilot] = useState<PilotMetric | null>(null);
+  const [onboarding, setOnboarding] = useState<OnboardingHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -93,14 +96,16 @@ export default function DashboardPage() {
         const profile = await fetchMe();
         setMe(profile);
         if (!REVIEWER_ROLES.has(profile.role) || !profile.team_id) return;
-        const [dash, env, pm] = await Promise.all([
+        const [dash, env, pm, ob] = await Promise.all([
           fetchTeamDashboard(profile.team_id),
           fetchEnvironmentMetrics(profile.team_id),
           fetchPilotMetric(profile.team_id).catch(() => null),
+          fetchOnboarding(profile.team_id).catch(() => null),
         ]);
         setDashboard(dash);
         setMetrics(env);
         setPilot(pm);
+        setOnboarding(ob);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ошибка загрузки");
       } finally {
@@ -207,6 +212,40 @@ export default function DashboardPage() {
                 </span>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {onboarding && onboarding.sufficient_data && (
+        <section className="mt-10 rounded-xl border border-white/10 bg-white/5 p-5">
+          <h2 className="text-lg font-medium">Онбординг — адаптация новых сотрудников</h2>
+          <p className="mt-1 text-xs opacity-50">
+            Новички (в команде &lt; {onboarding.window_days} дней) против устоявшейся команды.
+          </p>
+          <div className="mt-4 flex flex-wrap items-end gap-6">
+            <div>
+              <div className="text-xs opacity-50">давление у новичков</div>
+              <div className="text-3xl font-semibold">
+                {onboarding.new_hire_mean?.toFixed(2) ?? "—"}
+              </div>
+            </div>
+            <div className="text-sm opacity-70">
+              устоявшаяся команда:{" "}
+              {onboarding.tenured_mean !== null ? onboarding.tenured_mean.toFixed(2) : "нет данных"}
+            </div>
+            {onboarding.integration_friction !== null && (
+              <div className="text-sm">
+                трение интеграции:{" "}
+                <span className={onboarding.friction_flag ? "text-red-400" : "text-emerald-400"}>
+                  {onboarding.integration_friction > 0 ? "+" : ""}
+                  {onboarding.integration_friction.toFixed(2)}
+                  {onboarding.friction_flag ? " (внимание)" : " (норма)"}
+                </span>
+              </div>
+            )}
+            <div className="text-sm opacity-70">
+              новичков в высоком риске: <span className="font-medium">{onboarding.at_risk_count}</span>
+            </div>
           </div>
         </section>
       )}
