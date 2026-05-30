@@ -109,6 +109,44 @@ export interface RecalibrationTimeline {
   events: RecalibrationEvent[];
 }
 
+export interface UserSummary {
+  id: string;
+  full_name: string;
+  email: string;
+  role: Me["role"];
+  team_id: string | null;
+}
+
+export interface HistoryItem {
+  id: string;
+  type: string;
+  submitted_at: string;
+  burnout_pressure_score: number | null;
+  risk_level: RiskLevel | null;
+}
+
+export interface CalibrationReview {
+  id: string;
+  subject_user_id: string;
+  reviewer_user_id: string | null;
+  reviewer_name: string | null;
+  risk_level: RiskLevel | null;
+  recommendation: string | null;
+  action_items: string | null;
+  source_of_evidence: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ReviewInput {
+  subject_user_id: string;
+  risk_level?: RiskLevel | null;
+  recommendation?: string | null;
+  action_items?: string | null;
+  source_of_evidence?: string | null;
+  notes?: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -174,5 +212,24 @@ export function createRecalibration(
   return request("/recalibration/create", {
     method: "POST",
     body: JSON.stringify({ user_id: userId, cycle, notes: notes || null }),
+  });
+}
+
+export function fetchUsers(): Promise<UserSummary[]> {
+  return request("/users");
+}
+
+export function fetchEmployeeHistory(userId: string): Promise<HistoryItem[]> {
+  return request(`/employee/${userId}/history`);
+}
+
+export function fetchReviews(subjectId: string): Promise<CalibrationReview[]> {
+  return request(`/calibration/review/${subjectId}`);
+}
+
+export function createReview(input: ReviewInput): Promise<CalibrationReview> {
+  return request("/calibration/review", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
