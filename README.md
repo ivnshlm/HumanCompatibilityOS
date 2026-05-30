@@ -39,6 +39,10 @@ docker compose up --build
 # frontend: http://localhost:3000
 ```
 
+## Возможности
+
+См. [docs/FEATURES.md](docs/FEATURES.md) — что умеет сервис (по модулям) и принципы продукта.
+
 ## Дорожная карта
 
 См. [docs/ROADMAP.md](docs/ROADMAP.md). Разработка ведётся пофазно.
