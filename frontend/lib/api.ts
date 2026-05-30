@@ -86,6 +86,29 @@ export interface EnvironmentMetrics {
   aggregates: MetricAggregate[];
 }
 
+export type RecalibrationCycle = "baseline" | "day_30" | "day_90" | "retrospective";
+
+export interface RecalibrationEvent {
+  id: string;
+  cycle: RecalibrationCycle;
+  questionnaire_id: string | null;
+  submitted_at: string | null;
+  burnout_pressure_score: number | null;
+  risk_level: RiskLevel | null;
+  delta_vs_baseline: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface RecalibrationTimeline {
+  user_id: string;
+  baseline_score: number | null;
+  trend: "improving" | "worsening" | "stable" | "insufficient";
+  trend_label: string;
+  recommendations: string[];
+  events: RecalibrationEvent[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -137,4 +160,19 @@ export function fetchTeamDashboard(teamId: string): Promise<TeamDashboard> {
 export function fetchEnvironmentMetrics(teamId?: string): Promise<EnvironmentMetrics> {
   const qs = teamId ? `?team_id=${encodeURIComponent(teamId)}` : "";
   return request(`/environment/metrics${qs}`);
+}
+
+export function fetchRecalibration(userId: string): Promise<RecalibrationTimeline> {
+  return request(`/recalibration/${userId}`);
+}
+
+export function createRecalibration(
+  userId: string,
+  cycle: RecalibrationCycle,
+  notes?: string,
+): Promise<RecalibrationEvent> {
+  return request("/recalibration/create", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId, cycle, notes: notes || null }),
+  });
 }
