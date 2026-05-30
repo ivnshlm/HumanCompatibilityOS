@@ -26,6 +26,12 @@ export default function Home() {
           >
             Пройти опросник
           </a>
+          <a
+            href="/dashboard"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Дашборд
+          </a>
         </nav>
       </header>
 
@@ -39,7 +45,11 @@ export default function Home() {
             <div className="mt-1 text-xs uppercase tracking-wide opacity-50">
               {b.hint}
             </div>
-            <div className="mt-4 text-sm opacity-60">— нет данных (Фаза 0)</div>
+            <div className="mt-4 text-sm opacity-60">
+              <a href="/dashboard" className="underline underline-offset-4 hover:opacity-100">
+                Открыть на дашборде
+              </a>
+            </div>
           </div>
         ))}
       </section>

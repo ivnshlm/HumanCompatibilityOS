@@ -62,9 +62,16 @@ frontend skeleton (Next.js + Tailwind, заглушка дашборда), CI, R
 UI: страница логина, форма опросника (шкала 1–5) с явным согласием,
 экран результата с разбором по компонентам.
 
-### Фаза 3 — Дашборд (телеметрия)
-`GET /dashboard/team/{id}`, `GET /environment/metrics`, агрегаты 4 блоков,
-anonymized analytics mode, RBAC-видимость. UI: дашборд с реальными данными.
+### Фаза 3 — Дашборд (телеметрия) ✅
+`GET /dashboard/team/{id}` — агрегаты 4 блоков (Burnout Pressure, Recovery
+Sustainability, Communication Entropy, Leadership Stability) из последнего опросника
+каждого участника команды, с распределением по уровням риска. `POST/GET
+/environment/metrics` — запись и агрегаты (count/mean/min/max) по типам метрик.
+Anonymized analytics mode: агрегаты подавляются при выборке < MIN_COHORT (3) —
+команда не может стать профилем одного человека. RBAC: дашборд видят hr/team_lead/
+admin/ethics_reviewer; team_lead — только свою команду; просмотры аудируются.
+Доменное ядро в `app/dashboard.py` (`aggregate_team`, `aggregate_metrics`).
+UI: страница `/dashboard` с реальными данными, светофоры с дисклеймерами.
 
 ### Фаза 4 — Движок рекалибровки
 `POST /recalibration/create`, циклы 30/90 дней, сравнение с baseline, тренды,
