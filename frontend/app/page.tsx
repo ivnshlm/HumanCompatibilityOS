@@ -44,6 +44,12 @@ export default function Home() {
           >
             Review
           </a>
+          <a
+            href="/audit"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Аудит
+          </a>
         </nav>
       </header>
 
