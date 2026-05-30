@@ -12,6 +12,10 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.prod.example
+
+# Canonical spec package (local reference only)
+hcos_canonical/
 
 # Node / Next.js
 node_modules/

@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 30
     refresh_token_ttl_days: int = 14
 
+    # Comma-separated list of extra allowed CORS origins (split-deploy / local dev).
+    # Empty by default — the single-origin reverse-proxy deploy needs no CORS.
+    cors_origins: str = ""
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

@@ -1,0 +1,16 @@
+# Single-origin reverse proxy with automatic HTTPS (Let's Encrypt).
+# HCOS_DOMAIN comes from the environment (e.g. 203.0.113.10.sslip.io).
+
+{$HCOS_DOMAIN} {
+	encode gzip
+
+	# API: strip the /api prefix, forward to FastAPI (so /api/auth/login -> /auth/login).
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else: the Next.js frontend.
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
