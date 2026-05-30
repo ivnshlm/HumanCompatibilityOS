@@ -174,3 +174,87 @@ class AuditLog(Base):
     detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# --- Compatibility Hiring (HR Workbook v6) ---
+
+
+class AssessmentType(str, enum.Enum):
+    quick_screen = "quick_screen"
+    full_calibration = "full_calibration"
+
+
+class OverallRisk(str, enum.Enum):
+    green = "green"  # Recommended
+    yellow = "yellow"  # Conditional
+    red = "red"  # Tactical / high supervision
+
+
+class Candidate(Base):
+    __tablename__ = "candidates"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    assessments: Mapped[list["CompatibilityAssessment"]] = relationship(
+        back_populates="candidate", cascade="all, delete-orphan"
+    )
+    development_plans: Mapped[list["DevelopmentPlan"]] = relationship(
+        back_populates="candidate", cascade="all, delete-orphan"
+    )
+
+
+class CompatibilityAssessment(Base):
+    __tablename__ = "compatibility_assessments"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    type: Mapped[AssessmentType] = mapped_column(
+        Enum(AssessmentType, native_enum=False), nullable=False
+    )
+    reviewer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    # Per-signal ratings: {signal_key: "low"|"medium"|"high"}.
+    signals: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Full-calibration compatibility dimensions: {dimension_key: value}.
+    dimensions: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    overall_risk: Mapped[OverallRisk | None] = mapped_column(
+        Enum(OverallRisk, native_enum=False), nullable=True
+    )
+    recommendation: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    action_items: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_of_evidence: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    candidate: Mapped["Candidate"] = relationship(back_populates="assessments")
+
+
+class DevelopmentPlan(Base):
+    __tablename__ = "development_plans"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    risk_area: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    observed_pattern: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suggested_support: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    progress_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    candidate: Mapped["Candidate"] = relationship(back_populates="development_plans")

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models import RecalibrationCycle, RiskLevel, Role
+from app.models import AssessmentType, OverallRisk, RecalibrationCycle, RiskLevel, Role
 
 
 class RegisterRequest(BaseModel):
@@ -293,3 +293,99 @@ class ExportBundleOut(BaseModel):
     questionnaires: list[HistoryItem]
     recalibration: RecalibrationTimelineOut
     calibration_reviews: list[CalibrationReviewOut]
+
+
+# --- Compatibility Hiring (HR Workbook v6) ---
+
+
+class SignalRef(BaseModel):
+    key: str
+    label: str
+    label_en: str
+    indicator: str
+    question: str
+    focus: str
+    legend_low: str
+    legend_medium: str
+    legend_high: str
+    quick_screen: bool
+
+
+class HiringReferenceOut(BaseModel):
+    signals: list[SignalRef]
+    quick_screen_signals: list[str]
+    dimensions: list[dict[str, str]]
+    decision_guidance: list[str]
+    overall_risk_labels: dict[str, str]
+    disclaimer: str
+
+
+class CandidateCreate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+    role: str | None = Field(default=None, max_length=120)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class CandidateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    full_name: str
+    role: str | None
+    notes: str | None
+    created_at: datetime
+
+
+class AssessmentCreate(BaseModel):
+    type: AssessmentType
+    signals: dict[str, RiskLevel] | None = None
+    dimensions: dict[str, str] | None = None
+    overall_risk: OverallRisk | None = None
+    recommendation: str | None = Field(default=None, max_length=500)
+    action_items: str | None = Field(default=None, max_length=2000)
+    source_of_evidence: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class AssessmentOut(BaseModel):
+    id: uuid.UUID
+    candidate_id: uuid.UUID
+    type: AssessmentType
+    reviewer_user_id: uuid.UUID | None
+    reviewer_name: str | None
+    signals: dict[str, str] | None
+    dimensions: dict[str, str] | None
+    overall_risk: OverallRisk | None
+    suggested_overall_risk: OverallRisk | None
+    recommendation: str | None
+    action_items: str | None
+    source_of_evidence: str | None
+    notes: str | None
+    created_at: datetime
+
+
+class DevelopmentPlanCreate(BaseModel):
+    risk_area: str | None = Field(default=None, max_length=200)
+    observed_pattern: str | None = Field(default=None, max_length=2000)
+    suggested_support: str | None = Field(default=None, max_length=2000)
+    review_date: datetime | None = None
+    progress_notes: str | None = Field(default=None, max_length=2000)
+
+
+class DevelopmentPlanOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    candidate_id: uuid.UUID
+    risk_area: str | None
+    observed_pattern: str | None
+    suggested_support: str | None
+    review_date: datetime | None
+    progress_notes: str | None
+    created_at: datetime
+
+
+class CandidateDetailOut(BaseModel):
+    candidate: CandidateOut
+    assessments: list[AssessmentOut]
+    development_plans: list[DevelopmentPlanOut]

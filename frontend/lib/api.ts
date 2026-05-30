@@ -190,6 +190,72 @@ export interface OnboardingHealth {
   notice: string | null;
 }
 
+export type OverallRisk = "green" | "yellow" | "red";
+
+export interface HiringSignal {
+  key: string;
+  label: string;
+  label_en: string;
+  indicator: string;
+  question: string;
+  focus: string;
+  legend_low: string;
+  legend_medium: string;
+  legend_high: string;
+  quick_screen: boolean;
+}
+
+export interface HiringReference {
+  signals: HiringSignal[];
+  quick_screen_signals: string[];
+  dimensions: { key: string; label: string }[];
+  decision_guidance: string[];
+  overall_risk_labels: Record<string, string>;
+  disclaimer: string;
+}
+
+export interface Candidate {
+  id: string;
+  full_name: string;
+  role: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface Assessment {
+  id: string;
+  candidate_id: string;
+  type: "quick_screen" | "full_calibration";
+  reviewer_user_id: string | null;
+  reviewer_name: string | null;
+  signals: Record<string, RiskLevel> | null;
+  dimensions: Record<string, string> | null;
+  overall_risk: OverallRisk | null;
+  suggested_overall_risk: OverallRisk | null;
+  recommendation: string | null;
+  action_items: string | null;
+  source_of_evidence: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface DevelopmentPlanItem {
+  id: string;
+  candidate_id: string;
+  risk_area: string | null;
+  observed_pattern: string | null;
+  suggested_support: string | null;
+  review_date: string | null;
+  progress_notes: string | null;
+  created_at: string;
+}
+
+export interface CandidateDetail {
+  candidate: Candidate;
+  assessments: Assessment[];
+  development_plans: DevelopmentPlanItem[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -287,6 +353,58 @@ export function fetchPilotMetric(teamId: string): Promise<PilotMetric> {
 
 export function fetchOnboarding(teamId: string): Promise<OnboardingHealth> {
   return request(`/onboarding/team/${teamId}`);
+}
+
+export function fetchHiringReference(): Promise<HiringReference> {
+  return request("/hiring/reference");
+}
+
+export function fetchCandidates(): Promise<Candidate[]> {
+  return request("/hiring/candidates");
+}
+
+export function createCandidate(full_name: string, role?: string): Promise<Candidate> {
+  return request("/hiring/candidates", {
+    method: "POST",
+    body: JSON.stringify({ full_name, role: role || null }),
+  });
+}
+
+export function fetchCandidate(id: string): Promise<CandidateDetail> {
+  return request(`/hiring/candidates/${id}`);
+}
+
+export function createAssessment(
+  candidateId: string,
+  payload: {
+    type: "quick_screen" | "full_calibration";
+    signals: Record<string, RiskLevel>;
+    overall_risk?: OverallRisk | null;
+    recommendation?: string | null;
+    action_items?: string | null;
+    source_of_evidence?: string | null;
+    notes?: string | null;
+  },
+): Promise<Assessment> {
+  return request(`/hiring/candidates/${candidateId}/assessments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createDevelopmentPlan(
+  candidateId: string,
+  payload: {
+    risk_area?: string | null;
+    observed_pattern?: string | null;
+    suggested_support?: string | null;
+    progress_notes?: string | null;
+  },
+): Promise<DevelopmentPlanItem> {
+  return request(`/hiring/candidates/${candidateId}/development-plan`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function exportEmployee(employeeId: string): Promise<unknown> {
