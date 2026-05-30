@@ -273,6 +273,19 @@ class PilotMetricOut(BaseModel):
     notice: str | None = None
 
 
+class OnboardingHealthOut(BaseModel):
+    team_id: uuid.UUID
+    window_days: int
+    cohort_size: int
+    sufficient_data: bool
+    new_hire_mean: float | None
+    tenured_mean: float | None
+    integration_friction: float | None
+    friction_flag: bool
+    at_risk_count: int
+    notice: str | None = None
+
+
 class ExportBundleOut(BaseModel):
     generated_at: datetime
     disclaimer: str
