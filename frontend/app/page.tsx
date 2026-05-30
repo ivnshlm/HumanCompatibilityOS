@@ -50,6 +50,12 @@ export default function Home() {
           >
             Аудит
           </a>
+          <a
+            href="/hiring"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Подбор
+          </a>
         </nav>
       </header>
 
