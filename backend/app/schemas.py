@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models import RiskLevel, Role
+from app.models import RecalibrationCycle, RiskLevel, Role
 
 
 class RegisterRequest(BaseModel):
@@ -156,3 +156,35 @@ class EnvironmentMetricsResponse(BaseModel):
     team_id: uuid.UUID | None = None
     metric_type: str | None = None
     aggregates: list[MetricAggregateOut]
+
+
+# --- Recalibration ---
+
+
+class RecalibrationCreate(BaseModel):
+    user_id: uuid.UUID
+    cycle: RecalibrationCycle
+    # Anchor questionnaire; defaults to the user's latest scored one if omitted.
+    questionnaire_id: uuid.UUID | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class RecalibrationEventOut(BaseModel):
+    id: uuid.UUID
+    cycle: RecalibrationCycle
+    questionnaire_id: uuid.UUID | None
+    submitted_at: datetime | None
+    burnout_pressure_score: float | None
+    risk_level: RiskLevel | None
+    delta_vs_baseline: float | None
+    notes: str | None
+    created_at: datetime
+
+
+class RecalibrationTimelineOut(BaseModel):
+    user_id: uuid.UUID
+    baseline_score: float | None
+    trend: str
+    trend_label: str
+    recommendations: list[str]
+    events: list[RecalibrationEventOut]

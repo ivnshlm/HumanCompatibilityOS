@@ -32,6 +32,12 @@ export default function Home() {
           >
             Дашборд
           </a>
+          <a
+            href="/recalibration"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Рекалибровка
+          </a>
         </nav>
       </header>
 
