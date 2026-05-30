@@ -2,7 +2,12 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from app.pilot import PILOT_TARGET_PCT, compute_pilot_metric
+from app.pilot import PILOT_TARGET_PCT, compute_pilot_report
+from app.scoring import compute_burnout_score
+
+
+def _res(value: int):
+    return compute_burnout_score({i: value for i in range(1, 16)})
 
 
 def _answers(value: int) -> list[dict]:
@@ -51,20 +56,30 @@ def _recal(client: TestClient, token: str, user_id: str, cycle: str, qid: str) -
 # --- Unit: pilot metric ---
 
 
-def test_pilot_metric_target_met():
-    # 5.0 -> 3.0 emergency pressure for 3 members = -40% (meets -20%).
-    metric = compute_pilot_metric([(5.0, 3.0), (5.0, 3.0), (5.0, 3.0)])
-    assert metric.sufficient_data is True
-    assert metric.pct_change == -40.0
-    assert metric.target_met is True
-    assert metric.target_pct == PILOT_TARGET_PCT
+def test_pilot_report_target_met():
+    # Emergency pressure 5.0 -> 1.0 for 3 members = -80% (meets -20%).
+    report = compute_pilot_report([(_res(5), _res(1))] * 3)
+    assert report.sufficient_data is True
+    assert report.target_met is True
+    assert report.target_pct == PILOT_TARGET_PCT
+    assert report.headline.key == "emergency_pressure"
+    assert report.headline.pct_change == -80.0
+    assert len(report.blocks) == 4  # all four environment blocks
+    assert {b.key for b in report.blocks} == {
+        "burnout_pressure",
+        "recovery_sustainability",
+        "communication_entropy",
+        "leadership_stability",
+    }
 
 
-def test_pilot_metric_target_not_met_and_suppressed():
-    assert compute_pilot_metric([(5.0, 4.8)] * 3).target_met is False  # -4%
-    suppressed = compute_pilot_metric([(5.0, 3.0)])  # cohort < 3
+def test_pilot_report_not_met_and_suppressed():
+    flat = compute_pilot_report([(_res(3), _res(3))] * 3)  # no change
+    assert flat.sufficient_data is True
+    assert flat.target_met is False
+    suppressed = compute_pilot_report([(_res(5), _res(1))])  # cohort < 3
     assert suppressed.sufficient_data is False
-    assert suppressed.pct_change is None
+    assert suppressed.headline is None
 
 
 # --- compliance policy ---
@@ -141,9 +156,11 @@ def test_pilot_metric_endpoint(client: TestClient):
     body = r.json()
     assert body["sufficient_data"] is True
     assert body["cohort_size"] == 3
-    assert body["baseline_mean"] == 5.0
-    assert body["latest_mean"] == 1.0
     assert body["target_met"] is True
+    assert body["headline"]["key"] == "emergency_pressure"
+    assert body["headline"]["baseline_mean"] == 5.0
+    assert body["headline"]["latest_mean"] == 1.0
+    assert len(body["blocks"]) == 4
 
     # Plain employee cannot view pilot metrics.
     emp = _register_login(client, "pm_emp@example.com")

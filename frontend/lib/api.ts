@@ -157,16 +157,23 @@ export interface AuditEntry {
   created_at: string;
 }
 
+export interface MetricChange {
+  key: string;
+  label: string;
+  baseline_mean: number;
+  latest_mean: number;
+  pct_change: number;
+  improved: boolean;
+}
+
 export interface PilotMetric {
   team_id: string;
-  metric: string;
   cohort_size: number;
   sufficient_data: boolean;
-  baseline_mean: number | null;
-  latest_mean: number | null;
-  pct_change: number | null;
   target_pct: number;
   target_met: boolean;
+  headline: MetricChange | null;
+  blocks: MetricChange[];
   notice: string | null;
 }
 

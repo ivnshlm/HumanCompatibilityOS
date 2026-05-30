@@ -159,31 +159,54 @@ export default function DashboardPage() {
         </>
       )}
 
-      {pilot && pilot.sufficient_data && (
+      {pilot && pilot.sufficient_data && pilot.headline && (
         <section className="mt-10 rounded-xl border border-white/10 bg-white/5 p-5">
-          <h2 className="text-lg font-medium">Пилотная метрика — давление аврала за 90 дней</h2>
-          <div className="mt-3 flex flex-wrap items-end gap-6">
+          <h2 className="text-lg font-medium">Пилотная метрика — изменение за 90 дней</h2>
+          <p className="mt-1 text-xs opacity-50">
+            Базовая точка → 90 дней. Снижение = улучшение среды.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-end gap-6">
             <div>
-              <div className="text-xs opacity-50">изменение</div>
+              <div className="text-xs opacity-50">{pilot.headline.label} (цель {pilot.target_pct}%)</div>
               <div
                 className={`text-3xl font-semibold ${
                   pilot.target_met ? "text-emerald-400" : "text-amber-400"
                 }`}
               >
-                {pilot.pct_change !== null
-                  ? `${pilot.pct_change > 0 ? "+" : ""}${pilot.pct_change}%`
-                  : "—"}
+                {pilot.headline.pct_change > 0 ? "+" : ""}
+                {pilot.headline.pct_change}%
               </div>
             </div>
             <div className="text-sm opacity-70">
-              base {pilot.baseline_mean?.toFixed(2)} → 90д {pilot.latest_mean?.toFixed(2)}
+              {pilot.headline.baseline_mean.toFixed(2)} → {pilot.headline.latest_mean.toFixed(2)}
             </div>
             <div className="text-sm">
-              Цель {pilot.target_pct}%:{" "}
+              Цель:{" "}
               <span className={pilot.target_met ? "text-emerald-400" : "text-amber-400"}>
                 {pilot.target_met ? "достигнута" : "не достигнута"}
               </span>
             </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {pilot.blocks.map((b) => (
+              <div
+                key={b.key}
+                className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm"
+              >
+                <span className="opacity-80">{b.label}</span>
+                <span className="flex items-center gap-2">
+                  <span className="opacity-50">
+                    {b.baseline_mean.toFixed(2)} → {b.latest_mean.toFixed(2)}
+                  </span>
+                  <span className={b.improved ? "text-emerald-400" : "text-amber-400"}>
+                    {b.pct_change > 0 ? "+" : ""}
+                    {b.pct_change}%
+                  </span>
+                </span>
+              </div>
+            ))}
           </div>
         </section>
       )}

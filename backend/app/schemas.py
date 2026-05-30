@@ -253,16 +253,23 @@ class CompliancePolicyOut(BaseModel):
     disclaimer: str
 
 
+class MetricChangeOut(BaseModel):
+    key: str
+    label: str
+    baseline_mean: float
+    latest_mean: float
+    pct_change: float
+    improved: bool
+
+
 class PilotMetricOut(BaseModel):
     team_id: uuid.UUID
-    metric: str
     cohort_size: int
     sufficient_data: bool
-    baseline_mean: float | None
-    latest_mean: float | None
-    pct_change: float | None
     target_pct: float
     target_met: bool
+    headline: MetricChangeOut | None = None
+    blocks: list[MetricChangeOut] = []
     notice: str | None = None
 
 
