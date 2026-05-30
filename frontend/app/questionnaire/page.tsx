@@ -119,18 +119,22 @@ export default function QuestionnairePage() {
 
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
         {questions.map((q) => (
-          <fieldset key={q.index} className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <legend className="px-1 text-sm">
+          <fieldset key={q.index} className="rounded-xl border border-white/10 bg-white/5 p-5">
+            <legend className="sr-only">
               {q.index}. {q.text}
             </legend>
-            <div className="mt-3 flex gap-2">
+            <p className="text-sm leading-relaxed">
+              <span className="mr-1 opacity-50">{q.index}.</span>
+              {q.text}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
               {SCALE.map((v) => (
                 <label
                   key={v}
-                  className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border text-sm ${
+                  className={`flex h-10 w-10 cursor-pointer select-none items-center justify-center rounded-lg border text-sm transition-colors ${
                     answers[q.index] === v
                       ? "border-white/60 bg-white/20"
-                      : "border-white/10 bg-white/5"
+                      : "border-white/10 bg-white/5 hover:border-white/30"
                   }`}
                 >
                   <input
