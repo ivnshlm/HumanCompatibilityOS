@@ -71,6 +71,21 @@ git pull && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 docker compose -f docker-compose.prod.yml --env-file .env.prod down
 ```
 
+## Автодеплой (CI/CD)
+
+Прод обновляется автоматически: после зелёного `CI` на ветке `main` запускается
+workflow **`Deploy`** (`.github/workflows/deploy.yml`). Он собирает чистый снимок
+коммита (`git archive`), заливает по SSH на сервер и пересобирает стек —
+`.env.prod` на сервере не трогается.
+
+Схема **push**: деплоит сама GitHub Actions, серверу не нужен доступ к репозиторию.
+Нужны GitHub Secrets: `DEPLOY_SSH_KEY` (приватный ключ), `DEPLOY_HOST`,
+`DEPLOY_USER`, `PUBLIC_BASE_URL`. Код на сервере живёт в `/opt/hcos`.
+
+Ручной перезапуск деплоя — вкладка Actions → workflow «Deploy» → Run workflow
+(или `gh workflow run Deploy`). Каждый деплой делает бэкап `.env.prod.bak.*` и
+в конце проверяет `/api/health`.
+
 ## Замечания по безопасности (тестовый стенд)
 
 - Схема БД создаётся автоматически при старте (`init_db`); миграций Alembic пока нет.

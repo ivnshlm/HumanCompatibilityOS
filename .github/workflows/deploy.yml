@@ -1,0 +1,72 @@
+name: Deploy
+
+# Push-based CD: after CI is green on main, ship a clean snapshot of that commit
+# to the VPS over SSH and rebuild the prod stack. The server keeps its own
+# .env.prod (secrets) — we never overwrite it.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Deploy only when CI succeeded (or on a manual dispatch).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Prepare SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Build release snapshot
+        run: git archive --format=tar -o hcos.tar HEAD
+
+      - name: Upload to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          scp -i ~/.ssh/id_deploy hcos.tar "$DEPLOY_USER@$DEPLOY_HOST:/tmp/hcos.tar"
+
+      - name: Extract & rebuild prod stack
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$DEPLOY_USER@$DEPLOY_HOST" bash -s <<'REMOTE'
+          set -e
+          cd /opt/hcos
+          cp -a .env.prod ".env.prod.bak.$(date +%Y%m%d%H%M%S)"
+          tar xf /tmp/hcos.tar
+          rm -f /tmp/hcos.tar
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+          docker image prune -f >/dev/null 2>&1 || true
+          REMOTE
+
+      - name: Health check
+        env:
+          PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS -m 15 "$PUBLIC_BASE_URL/api/health" | grep -q '"status":"ok"'; then
+              echo "health OK after rebuild"; exit 0
+            fi
+            echo "waiting for health ($i)…"; sleep 6
+          done
+          echo "health check failed after deploy"; exit 1
