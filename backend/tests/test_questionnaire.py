@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi.testclient import TestClient
 
 
@@ -52,6 +54,8 @@ def test_submit_and_score(client: TestClient):
     assert body["burnout_pressure_score"] == 3.0
     assert body["risk_level"] == "medium"
     assert len(body["components"]) == 5
+    assert body["interpretation"]["summary"]
+    assert body["interpretation"]["disclaimer"]
 
 
 def test_submit_incomplete_rejected(client: TestClient):
@@ -109,3 +113,42 @@ def test_history_rbac(client: TestClient):
     )
     assert r.status_code == 200
     assert len(r.json()) == 1
+
+
+def test_detail_own_has_interpretation(client: TestClient):
+    token = _register_login(client, "detail_own@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    qid = client.post(
+        "/questionnaire/submit", json={"answers": _answers(4)}, headers=headers
+    ).json()["id"]
+
+    r = client.get(f"/questionnaire/{qid}", headers=headers)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] == qid
+    assert len(body["components"]) == 5
+    assert body["interpretation"]["summary"]
+    assert body["interpretation"]["dominant_factors"]
+    assert body["interpretation"]["check_next"]
+
+
+def test_detail_rbac_and_404(client: TestClient):
+    emp_token = _register_login(client, "detail_subj@example.com")
+    emp_headers = {"Authorization": f"Bearer {emp_token}"}
+    qid = client.post(
+        "/questionnaire/submit", json={"answers": _answers(2)}, headers=emp_headers
+    ).json()["id"]
+
+    # Another plain employee cannot view someone else's individual result.
+    other = _register_login(client, "detail_other@example.com")
+    r = client.get(f"/questionnaire/{qid}", headers={"Authorization": f"Bearer {other}"})
+    assert r.status_code == 403
+
+    # A reviewer can.
+    hr = _register_login(client, "detail_hr@example.com", role="hr")
+    r = client.get(f"/questionnaire/{qid}", headers={"Authorization": f"Bearer {hr}"})
+    assert r.status_code == 200
+
+    # Unknown id → 404.
+    r = client.get(f"/questionnaire/{uuid.uuid4()}", headers=emp_headers)
+    assert r.status_code == 404

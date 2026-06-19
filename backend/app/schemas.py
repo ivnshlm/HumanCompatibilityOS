@@ -306,7 +306,9 @@ class ExportBundleOut(BaseModel):
     generated_at: datetime
     disclaimer: str
     user: UserRead
-    questionnaires: list[HistoryItem]
+    # Full explainable results (components + interpretation), not bare summaries —
+    # a human reviewer gets the same careful reading the employee sees.
+    questionnaires: list[QuestionnaireResult]
     recalibration: RecalibrationTimelineOut
     calibration_reviews: list[CalibrationReviewOut]
 

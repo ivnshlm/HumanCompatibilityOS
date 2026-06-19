@@ -17,11 +17,11 @@ from app.audit import log_audit
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import CalibrationReview, Questionnaire, Role, User
+from app.routers.questionnaire import questionnaire_result
 from app.routers.recalibration import build_timeline
 from app.schemas import (
     CalibrationReviewOut,
     ExportBundleOut,
-    HistoryItem,
     UserRead,
 )
 
@@ -91,7 +91,7 @@ def export_employee(
         generated_at=datetime.now(UTC),
         disclaimer=_DISCLAIMER_RU,
         user=UserRead.model_validate(subject),
-        questionnaires=[HistoryItem.model_validate(q) for q in questionnaires],
+        questionnaires=[questionnaire_result(q) for q in questionnaires],
         recalibration=build_timeline(db, employee_id),
         calibration_reviews=[
             CalibrationReviewOut(
