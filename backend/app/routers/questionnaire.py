@@ -10,14 +10,31 @@ from app.audit import log_audit
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import Questionnaire, QuestionnaireAnswer, Role, User
+from app.interpretation import build_interpretation
 from app.schemas import (
     ComponentScoreOut,
+    DominantFactorOut,
     HistoryItem,
+    InterpretationOut,
     QuestionnaireResult,
     QuestionnaireSubmit,
     QuestionOut,
 )
-from app.scoring import QUESTIONS, compute_burnout_score
+from app.scoring import QUESTIONS, BurnoutResult, compute_burnout_score
+
+
+def _interpretation_out(result: BurnoutResult) -> InterpretationOut:
+    interp = build_interpretation(result)
+    return InterpretationOut(
+        summary=interp.summary,
+        dominant_factors=[
+            DominantFactorOut(key=f.key, title=f.title, score=f.score, explanation=f.explanation)
+            for f in interp.dominant_factors
+        ],
+        possible_meaning=interp.possible_meaning,
+        check_next=interp.check_next,
+        disclaimer=interp.disclaimer,
+    )
 
 router = APIRouter(tags=["questionnaire"])
 
@@ -98,6 +115,7 @@ def submit_questionnaire(
             )
             for c in result.components
         ],
+        interpretation=_interpretation_out(result),
     )
 
 

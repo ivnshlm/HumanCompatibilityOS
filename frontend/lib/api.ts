@@ -31,6 +31,21 @@ export interface ComponentScore {
   question_indices: number[];
 }
 
+export interface DominantFactor {
+  key: string;
+  title: string;
+  score: number;
+  explanation: string;
+}
+
+export interface Interpretation {
+  summary: string;
+  dominant_factors: DominantFactor[];
+  possible_meaning: string;
+  check_next: string[];
+  disclaimer: string;
+}
+
 export interface QuestionnaireResult {
   id: string;
   user_id: string;
@@ -39,6 +54,7 @@ export interface QuestionnaireResult {
   burnout_pressure_score: number;
   risk_level: "low" | "medium" | "high";
   components: ComponentScore[];
+  interpretation: Interpretation;
 }
 
 export type RiskLevel = "low" | "medium" | "high";
