@@ -8,15 +8,17 @@ import {
   exportEmployee,
   fetchEmployeeHistory,
   fetchMe,
+  fetchQuestionnaireDetail,
   fetchReviews,
   fetchUsers,
   getToken,
   type CalibrationReview,
   type HistoryItem,
+  type QuestionnaireResult,
   type RiskLevel,
   type UserSummary,
 } from "@/lib/api";
-import { NO_DECISION_DISCLAIMER, RISK_DOT, RISK_LABEL, RISK_TEXT } from "@/lib/risk";
+import { RESULT_DISCLAIMER, RISK_DOT, RISK_LABEL, RISK_TEXT } from "@/lib/risk";
 
 const REVIEWER_ROLES = new Set(["hr", "team_lead", "admin", "ethics_reviewer"]);
 const RISK_OPTIONS: RiskLevel[] = ["low", "medium", "high"];
@@ -31,6 +33,42 @@ function RiskBadge({ level }: { level: RiskLevel | null }) {
   );
 }
 
+// The careful explainable reading of one past result — same doctrine the
+// employee sees, so the reviewer reads a signal, not a verdict.
+function InterpretationView({ result }: { result: QuestionnaireResult }) {
+  const it = result.interpretation;
+  return (
+    <div className="space-y-3 border-t border-white/10 px-4 py-3 text-sm">
+      <p className="leading-relaxed opacity-90">{it.summary}</p>
+
+      <div>
+        <div className="text-xs uppercase tracking-wide opacity-50">Что создаёт давление</div>
+        <div className="mt-1 space-y-1">
+          {it.dominant_factors.map((f) => (
+            <div key={f.key} className="flex justify-between gap-3">
+              <span className="opacity-90">{f.title}</span>
+              <span className="font-semibold tabular-nums">{f.score.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="leading-relaxed opacity-80">{it.possible_meaning}</p>
+
+      <div>
+        <div className="text-xs uppercase tracking-wide opacity-50">Что проверить дальше</div>
+        <ul className="mt-1 list-disc space-y-0.5 pl-5 opacity-90">
+          {it.check_next.map((x, i) => (
+            <li key={i}>{x}</li>
+          ))}
+        </ul>
+      </div>
+
+      <p className="text-xs leading-relaxed opacity-50">{it.disclaimer}</p>
+    </div>
+  );
+}
+
 export default function ReviewPage() {
   const router = useRouter();
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -38,6 +76,8 @@ export default function ReviewPage() {
   const [subjectId, setSubjectId] = useState<string>("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [reviews, setReviews] = useState<CalibrationReview[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, QuestionnaireResult>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -100,7 +140,25 @@ export default function ReviewPage() {
     setSubjectId(id);
     setHistory([]);
     setReviews([]);
+    setOpenId(null);
+    setDetails({});
     if (id) await loadSubject(id);
+  }
+
+  async function toggleDetail(id: string) {
+    if (openId === id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(id);
+    if (!details[id]) {
+      try {
+        const d = await fetchQuestionnaireDetail(id);
+        setDetails((m) => ({ ...m, [id]: d }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Не удалось загрузить результат");
+      }
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -189,22 +247,36 @@ export default function ReviewPage() {
 
           <section className="mt-6">
             <h2 className="text-lg font-medium">История опросников</h2>
+            <p className="mt-1 text-xs opacity-50">Нажмите на запись, чтобы увидеть объяснимую интерпретацию.</p>
             {history.length > 0 ? (
               <div className="mt-3 space-y-2">
                 {history.map((h) => (
-                  <div
-                    key={h.id}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-2.5"
-                  >
-                    <div className="text-xs opacity-60">
-                      {new Date(h.submitted_at).toLocaleString("ru-RU")}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-semibold">
-                        {h.burnout_pressure_score?.toFixed(2) ?? "—"}
-                      </span>
-                      <RiskBadge level={h.risk_level} />
-                    </div>
+                  <div key={h.id} className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                    <button
+                      type="button"
+                      onClick={() => toggleDetail(h.id)}
+                      aria-expanded={openId === h.id}
+                      className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-white/5"
+                    >
+                      <div className="text-xs opacity-60">
+                        {new Date(h.submitted_at).toLocaleString("ru-RU")}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold">
+                          {h.burnout_pressure_score?.toFixed(2) ?? "—"}
+                        </span>
+                        <RiskBadge level={h.risk_level} />
+                        <span className={`text-xs opacity-40 transition-transform ${openId === h.id ? "rotate-180" : ""}`}>
+                          ▾
+                        </span>
+                      </div>
+                    </button>
+                    {openId === h.id &&
+                      (details[h.id] ? (
+                        <InterpretationView result={details[h.id]} />
+                      ) : (
+                        <div className="px-4 pb-3 text-xs opacity-50">Загрузка…</div>
+                      ))}
                   </div>
                 ))}
               </div>
@@ -315,7 +387,9 @@ export default function ReviewPage() {
         </>
       )}
 
-      <p className="mt-10 text-xs opacity-50">{NO_DECISION_DISCLAIMER}</p>
+      <p className="mt-10 rounded-lg border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs leading-relaxed opacity-70">
+        {RESULT_DISCLAIMER}
+      </p>
     </main>
   );
 }
