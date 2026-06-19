@@ -22,3 +22,8 @@ export const RISK_DOT: Record<RiskLevel, string> = {
 
 export const NO_DECISION_DISCLAIMER =
   "Светофор-индикаторы не являются основанием для кадровых решений. Все выводы требуют проверки человеком.";
+
+// Permanent ethical disclaimer for every individual-result surface (matches the
+// backend interpretation disclaimer).
+export const RESULT_DISCLAIMER =
+  "Этот результат является сигнальным слоем среды. Он не является диагнозом, оценкой личности или основанием для кадрового решения. Итоговые выводы принимаются человеком после проверки контекста.";

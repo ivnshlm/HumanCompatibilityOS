@@ -348,6 +348,10 @@ export function fetchEmployeeHistory(userId: string): Promise<HistoryItem[]> {
   return request(`/employee/${userId}/history`);
 }
 
+export function fetchQuestionnaireDetail(id: string): Promise<QuestionnaireResult> {
+  return request(`/questionnaire/${id}`);
+}
+
 export function fetchReviews(subjectId: string): Promise<CalibrationReview[]> {
   return request(`/calibration/review/${subjectId}`);
 }
