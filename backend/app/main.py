@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import init_db
 from app.routers import (
+    admin,
     audit,
     auth,
     calibration,
@@ -50,6 +51,7 @@ if settings.cors_origin_list:
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(questionnaire.router)
 app.include_router(dashboard.router)
 app.include_router(recalibration.router)

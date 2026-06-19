@@ -133,6 +133,23 @@ export interface UserSummary {
   team_id: string | null;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: Me["role"];
+  team_id: string | null;
+  is_active: boolean;
+  consent_given: boolean;
+  created_at: string;
+}
+
+export interface AdminUserPatch {
+  role?: Me["role"];
+  is_active?: boolean;
+  team_id?: string | null;
+}
+
 export interface HistoryItem {
   id: string;
   type: string;
@@ -342,6 +359,14 @@ export function createRecalibration(
 
 export function fetchUsers(): Promise<UserSummary[]> {
   return request("/users");
+}
+
+export function fetchAdminUsers(): Promise<AdminUser[]> {
+  return request("/admin/users");
+}
+
+export function updateAdminUser(id: string, patch: AdminUserPatch): Promise<AdminUser> {
+  return request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
 export function fetchEmployeeHistory(userId: string): Promise<HistoryItem[]> {

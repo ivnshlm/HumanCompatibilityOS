@@ -2,6 +2,8 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from conftest import promote_role
+
 from app.dashboard import MIN_COHORT, aggregate_team
 from app.scoring import compute_burnout_score
 
@@ -15,6 +17,8 @@ def _register(client: TestClient, email: str, role: str = "employee", team_id: s
     if team_id is not None:
         body["team_id"] = team_id
     client.post("/auth/register", json=body)
+    if role != "employee":
+        promote_role(email, role)
     token = client.post(
         "/auth/login", json={"email": email, "password": "password123"}
     ).json()["access_token"]

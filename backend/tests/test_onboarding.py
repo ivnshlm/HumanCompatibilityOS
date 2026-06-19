@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from app.onboarding import FRICTION_THRESHOLD, compute_onboarding_health
 from app.scoring import compute_burnout_score
 
+from conftest import promote_role
+
 
 def _res(value: int):
     return compute_burnout_score({i: value for i in range(1, 16)})
@@ -21,6 +23,8 @@ def _register_login(
     if team_id is not None:
         body["team_id"] = team_id
     client.post("/auth/register", json=body)
+    if role != "employee":
+        promote_role(email, role)
     token = client.post(
         "/auth/login", json={"email": email, "password": "password123"}
     ).json()["access_token"]

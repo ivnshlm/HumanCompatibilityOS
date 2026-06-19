@@ -3,12 +3,16 @@ from fastapi.testclient import TestClient
 from app.hiring import suggest_overall_risk
 from app.models import OverallRisk
 
+from conftest import promote_role
+
 
 def _register_login(client: TestClient, email: str, role: str = "employee") -> str:
     client.post(
         "/auth/register",
         json={"email": email, "password": "password123", "full_name": f"U {email}", "role": role},
     )
+    if role != "employee":
+        promote_role(email, role)
     return client.post(
         "/auth/login", json={"email": email, "password": "password123"}
     ).json()["access_token"]

@@ -2,6 +2,8 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from conftest import promote_role
+
 
 def _register_login(
     client: TestClient, email: str, role: str = "employee", team_id: str | None = None
@@ -10,6 +12,8 @@ def _register_login(
     if team_id is not None:
         body["team_id"] = team_id
     client.post("/auth/register", json=body)
+    if role != "employee":
+        promote_role(email, role)
     return client.post(
         "/auth/login", json={"email": email, "password": "password123"}
     ).json()["access_token"]

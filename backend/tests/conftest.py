@@ -2,7 +2,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -42,3 +42,18 @@ def client() -> Generator[TestClient, None, None]:
     # No context manager → lifespan/init_db (Postgres) is not triggered.
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+def promote_role(email: str, role: str) -> None:
+    """Test helper: grant a registered user a privileged role directly.
+
+    Registration only ever creates Employees now, so tests that need an HR /
+    admin / team_lead / ethics_reviewer set the role straight in the DB.
+    """
+    from app.models import Role, User
+
+    with TestingSessionLocal() as db:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is not None:
+            user.role = Role(role)
+            db.commit()

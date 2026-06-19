@@ -7,6 +7,8 @@ from app.recalibration import (
 )
 from app.scoring import compute_burnout_score
 
+from conftest import promote_role
+
 
 def _answers(value: int) -> list[dict]:
     return [{"question_index": i, "value": value} for i in range(1, 16)]
@@ -17,6 +19,8 @@ def _register_login(client: TestClient, email: str, role: str = "employee", *, c
         "/auth/register",
         json={"email": email, "password": "password123", "full_name": "T", "role": role},
     )
+    if role != "employee":
+        promote_role(email, role)
     token = client.post(
         "/auth/login", json={"email": email, "password": "password123"}
     ).json()["access_token"]

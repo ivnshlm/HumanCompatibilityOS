@@ -12,7 +12,18 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)  # bcrypt truncates beyond 72 bytes
     full_name: str = Field(min_length=1, max_length=200)
-    role: Role = Role.employee
+    # Role is NOT client-settable — registration always creates an Employee.
+    # Privileged roles are granted only by an admin (see AdminUserUpdate) or the
+    # INITIAL_ADMIN_EMAILS bootstrap. A self-chosen role would be privilege escalation.
+    team_id: uuid.UUID | None = None
+
+
+class AdminUserUpdate(BaseModel):
+    """Admin-only mutation of a user. Only the provided fields are applied
+    (detected via model_fields_set, so team_id=null explicitly clears the team)."""
+
+    role: Role | None = None
+    is_active: bool | None = None
     team_id: uuid.UUID | None = None
 
 
