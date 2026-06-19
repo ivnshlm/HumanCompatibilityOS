@@ -126,6 +126,11 @@ def test_export_self_and_rbac(client: TestClient):
     assert body["user"]["id"] == subj_id
     assert len(body["questionnaires"]) == 1
     assert "recalibration" in body
+    # The human-review bundle carries the full explainable reading, not bare numbers.
+    q0 = body["questionnaires"][0]
+    assert len(q0["components"]) == 5
+    assert q0["interpretation"]["summary"]
+    assert q0["interpretation"]["check_next"]
 
     intruder = _register_login(client, "exp_intr@example.com")
     forbidden = client.get(
