@@ -77,6 +77,21 @@ class ComponentScoreOut(BaseModel):
     question_indices: list[int]
 
 
+class DominantFactorOut(BaseModel):
+    key: str
+    title: str
+    score: float
+    explanation: str
+
+
+class InterpretationOut(BaseModel):
+    summary: str
+    dominant_factors: list[DominantFactorOut]
+    possible_meaning: str
+    check_next: list[str]
+    disclaimer: str
+
+
 class QuestionnaireResult(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -85,6 +100,7 @@ class QuestionnaireResult(BaseModel):
     burnout_pressure_score: float
     risk_level: RiskLevel
     components: list[ComponentScoreOut]
+    interpretation: InterpretationOut
 
 
 class HistoryItem(BaseModel):

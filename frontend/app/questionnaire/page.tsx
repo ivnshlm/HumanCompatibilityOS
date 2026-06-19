@@ -14,16 +14,18 @@ import {
 
 const SCALE = [1, 2, 3, 4, 5];
 
+// Safe-language labels (§6): name the overload regime, not the person.
 const RISK_LABEL: Record<QuestionnaireResult["risk_level"], string> = {
   low: "Низкий риск",
-  medium: "Средний риск",
-  high: "Высокий риск",
+  medium: "Средний риск перегруза",
+  high: "Высокий риск перегруза",
 };
 
+// Calm palette: high risk is a muted warning, never an aggressive red verdict.
 const RISK_CLASS: Record<QuestionnaireResult["risk_level"], string> = {
   low: "text-emerald-400",
   medium: "text-amber-400",
-  high: "text-red-400",
+  high: "text-orange-400",
 };
 
 export default function QuestionnairePage() {
@@ -73,11 +75,14 @@ export default function QuestionnairePage() {
   }
 
   if (result) {
+    const interp = result.interpretation;
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
         <h1 className="text-2xl font-semibold">Результат</h1>
+
+        {/* Numeric block (preserved) */}
         <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-6">
-          <div className="text-sm opacity-70">Давление выгорания</div>
+          <div className="text-sm opacity-70">Давление среды на человека</div>
           <div className="mt-1 text-4xl font-semibold">
             {result.burnout_pressure_score.toFixed(2)}
           </div>
@@ -86,26 +91,104 @@ export default function QuestionnairePage() {
           </div>
         </div>
 
-        <h2 className="mt-8 text-lg font-medium">Разбор по компонентам</h2>
-        <div className="mt-3 space-y-2">
-          {result.components.map((c) => (
-            <div
-              key={c.component}
-              className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3"
-            >
-              <div>
-                <div className="text-sm font-medium">{c.label}</div>
-                <div className="text-xs opacity-50">вес {(c.weight * 100).toFixed(0)}%</div>
-              </div>
-              <div className="text-lg font-semibold">{c.score.toFixed(2)}</div>
-            </div>
-          ))}
-        </div>
+        {/* Краткая интерпретация */}
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Краткая интерпретация</h2>
+          <p className="mt-2 text-sm leading-relaxed opacity-90">{interp.summary}</p>
+        </section>
 
-        <p className="mt-8 text-xs opacity-50">
-          Светофор-индикаторы не являются основанием для кадровых решений. Все выводы требуют
-          проверки человеком.
+        {/* Что создаёт давление (доминирующие факторы) */}
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Что создаёт давление</h2>
+          <div className="mt-3 space-y-2">
+            {interp.dominant_factors.map((f) => (
+              <div
+                key={f.key}
+                className="rounded-lg border border-white/10 bg-white/5 px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium">{f.title}</div>
+                  <div className="text-lg font-semibold tabular-nums">{f.score.toFixed(2)}</div>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed opacity-60">{f.explanation}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Что это может означать */}
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Что это может означать</h2>
+          <p className="mt-2 text-sm leading-relaxed opacity-90">{interp.possible_meaning}</p>
+        </section>
+
+        {/* Что проверить дальше */}
+        <section className="mt-8">
+          <h2 className="text-lg font-medium">Что проверить дальше</h2>
+          <ul className="mt-3 space-y-2">
+            {interp.check_next.map((item, i) => (
+              <li
+                key={i}
+                className="flex gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm leading-relaxed"
+              >
+                <span className="opacity-40">{i + 1}.</span>
+                <span className="opacity-90">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Как считался результат (раскрытие + полный разбор по компонентам) */}
+        <details className="mt-8 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
+          <summary className="cursor-pointer select-none text-sm font-medium opacity-90">
+            Как считался результат
+          </summary>
+          <div className="mt-4 space-y-3 text-xs leading-relaxed opacity-70">
+            <p>
+              Итоговый балл — это взвешенная сумма средних по пяти компонентам среды (шкала
+              1–5). Веса отражают вклад каждого компонента в общее давление.
+            </p>
+            <p>
+              Часть вопросов сформулирована «в позитивную сторону» (например, про
+              восстановление и устойчивый ритм): для них шкала инвертируется (6 − ответ), чтобы
+              у всех компонентов более высокое значение означало большее давление среды.
+            </p>
+            <div className="mt-2 space-y-2">
+              {result.components.map((c) => (
+                <div
+                  key={c.component}
+                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-2"
+                >
+                  <div>
+                    <div className="text-sm font-medium opacity-90">{c.label}</div>
+                    <div className="text-[11px] opacity-50">вес {(c.weight * 100).toFixed(0)}%</div>
+                  </div>
+                  <div className="text-base font-semibold tabular-nums opacity-90">
+                    {c.score.toFixed(2)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p>
+              Результат — это <strong>сигнал среды для проверки человеком</strong>, а не
+              кадровое решение и не оценка личности.
+            </p>
+          </div>
+        </details>
+
+        {/* Постоянный этический дисклеймер */}
+        <p className="mt-8 rounded-lg border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs leading-relaxed opacity-70">
+          {interp.disclaimer}
         </p>
+
+        <div className="mt-6">
+          <button
+            onClick={() => router.push("/")}
+            className="text-sm opacity-60 underline-offset-4 hover:underline"
+          >
+            ← На главную
+          </button>
+        </div>
       </main>
     );
   }
