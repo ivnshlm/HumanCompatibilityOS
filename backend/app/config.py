@@ -20,9 +20,18 @@ class Settings(BaseSettings):
     # Empty by default — the single-origin reverse-proxy deploy needs no CORS.
     cors_origins: str = ""
 
+    # Comma-separated emails granted the admin role automatically (bootstrap):
+    # promoted on startup if they already exist, and on registration when one of
+    # these emails signs up. The only path to admin without an existing admin.
+    initial_admin_emails: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def initial_admin_email_list(self) -> list[str]:
+        return [e.strip().lower() for e in self.initial_admin_emails.split(",") if e.strip()]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -32,6 +32,7 @@ services:
       APP_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      INITIAL_ADMIN_EMAILS: ${INITIAL_ADMIN_EMAILS:-}
     depends_on:
       db:
         condition: service_healthy

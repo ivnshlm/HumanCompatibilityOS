@@ -56,6 +56,12 @@ export default function Home() {
           >
             Подбор
           </a>
+          <a
+            href="/admin"
+            className="rounded-lg border border-white/15 px-4 py-2 font-medium"
+          >
+            Админ
+          </a>
         </nav>
       </header>
 

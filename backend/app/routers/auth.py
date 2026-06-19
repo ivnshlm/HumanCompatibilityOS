@@ -9,9 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.audit import log_audit
+from app.config import get_settings
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import User
+from app.models import Role, User
 from app.schemas import (
     ConsentRequest,
     LoginRequest,
@@ -41,16 +42,21 @@ def _tokens_for(user: User) -> TokenResponse:
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
-    # MVP-only: open registration. Role assignment is locked down in a later phase.
+    # Open registration, but role is NOT client-settable: everyone starts as an
+    # Employee. The only self-service path to admin is the INITIAL_ADMIN_EMAILS
+    # bootstrap (so a fresh system can get its first admin without a chicken-and-egg).
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    bootstrap = payload.email.lower() in get_settings().initial_admin_email_list
+    role = Role.admin if bootstrap else Role.employee
 
     user = User(
         email=payload.email,
         hashed_password=hash_password(payload.password),
         full_name=payload.full_name,
-        role=payload.role,
+        role=role,
         team_id=payload.team_id,
     )
     db.add(user)
