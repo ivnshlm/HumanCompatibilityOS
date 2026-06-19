@@ -144,7 +144,7 @@ export default function DashboardPage() {
       {dashboard && !dashboard.sufficient_data && (
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-6 text-sm opacity-90">
           {dashboard.notice ??
-            "Недостаточно данных для анонимной аналитики по этой команде."}
+            "Недостаточно данных для командного вывода. Чтобы защитить участников от деанонимизации, командная аналитика доступна только при выборке от 3 человек."}
           <div className="mt-1 text-xs opacity-60">
             Участников с данными: {dashboard.cohort_size}
           </div>

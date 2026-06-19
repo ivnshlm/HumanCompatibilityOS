@@ -38,6 +38,9 @@ def test_aggregate_team_suppresses_small_cohort():
     assert dash.blocks == []
     assert dash.cohort_size == MIN_COHORT - 1
     assert dash.notice is not None
+    # §10: the notice must state the de-anonymization rationale, not just "no data".
+    assert "деанонимиз" in dash.notice
+    assert str(MIN_COHORT) in dash.notice
 
 
 def test_aggregate_team_reports_four_blocks():
