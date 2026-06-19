@@ -1,5 +1,5 @@
 const BLOCKS = [
-  { title: "Давление выгорания", hint: "Burnout Pressure" },
+  { title: "Давление среды", hint: "Burnout Pressure" },
   { title: "Устойчивость восстановления", hint: "Recovery Sustainability" },
   { title: "Коммуникационная энтропия", hint: "Communication Entropy" },
   { title: "Устойчивость лидерства", hint: "Leadership Stability" },

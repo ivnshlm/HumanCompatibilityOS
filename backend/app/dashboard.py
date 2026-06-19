@@ -31,7 +31,8 @@ class DashboardBlock(str, Enum):
 
 
 BLOCK_LABELS_RU: dict[DashboardBlock, str] = {
-    DashboardBlock.burnout_pressure: "Давление выгорания",
+    # Safe language: name the environment pressure, not a medical "выгорание".
+    DashboardBlock.burnout_pressure: "Давление среды",
     DashboardBlock.recovery_sustainability: "Устойчивость восстановления",
     DashboardBlock.communication_entropy: "Коммуникационная энтропия",
     DashboardBlock.leadership_stability: "Устойчивость лидерства",
@@ -93,8 +94,9 @@ def aggregate_team(results: list[BurnoutResult]) -> TeamDashboard:
             sufficient_data=False,
             blocks=[],
             notice=(
-                f"Недостаточно данных для анонимной аналитики: нужно ≥ {MIN_COHORT} "
-                f"участников с заполненным опросником, сейчас {cohort_size}."
+                "Недостаточно данных для командного вывода. Чтобы защитить участников "
+                f"от деанонимизации, командная аналитика доступна только при выборке "
+                f"от {MIN_COHORT} человек (сейчас {cohort_size})."
             ),
         )
 
