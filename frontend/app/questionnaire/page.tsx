@@ -29,8 +29,15 @@ const RISK_CLASS: Record<QuestionnaireResult["risk_level"], string> = {
   high: "text-orange-400",
 };
 
+const LEVELS = [
+  { id: "short", label: "Короткий", hint: "15 вопросов · ~5 мин" },
+  { id: "base", label: "Базовый", hint: "25 вопросов · ~10 мин" },
+  { id: "deep", label: "Углублённый", hint: "40 вопросов · ~15–20 мин" },
+] as const;
+
 export default function QuestionnairePage() {
   const router = useRouter();
+  const [level, setLevel] = useState<string>("short");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [scale, setScale] = useState<ScaleOption[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -45,14 +52,16 @@ export default function QuestionnairePage() {
       router.replace("/login");
       return;
     }
-    fetchQuestions("short")
+    setLoading(true);
+    fetchQuestions(level)
       .then((set) => {
         setQuestions(set.questions);
         setScale(set.scale);
+        setAnswers({}); // a new level is a different question set
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Ошибка загрузки"))
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, level]);
 
   const allAnswered = questions.length > 0 && questions.every((q) => answers[q.question_id]);
 
@@ -66,7 +75,7 @@ export default function QuestionnairePage() {
         question_id: q.question_id,
         value: answers[q.question_id],
       }));
-      const res = await submitQuestionnaire(payload, "short");
+      const res = await submitQuestionnaire(payload, level);
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка отправки");
@@ -204,6 +213,26 @@ export default function QuestionnairePage() {
       <p className="mt-2 text-sm opacity-70">
         Оцените каждое утверждение по шкале согласия от 1 до 5.
       </p>
+
+      {/* Session level selector */}
+      <div className="mt-5 flex flex-wrap gap-2">
+        {LEVELS.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            onClick={() => setLevel(l.id)}
+            disabled={busy}
+            className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+              level === l.id
+                ? "border-white/60 bg-white/15"
+                : "border-white/10 bg-white/5 hover:border-white/30"
+            }`}
+          >
+            <div className="font-medium">{l.label}</div>
+            <div className="text-xs opacity-50">{l.hint}</div>
+          </button>
+        ))}
+      </div>
 
       {scale.length === 5 && (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-50">
