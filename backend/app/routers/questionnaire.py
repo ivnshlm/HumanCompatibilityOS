@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import question_bank
 from app.audit import log_audit
 from app.db import get_db
 from app.deps import get_current_user
@@ -19,8 +20,10 @@ from app.schemas import (
     QuestionnaireResult,
     QuestionnaireSubmit,
     QuestionOut,
+    QuestionSet,
+    ScaleOption,
 )
-from app.scoring import QUESTIONS, BurnoutResult, compute_burnout_score
+from app.scoring import BurnoutResult, compute_burnout_score
 
 router = APIRouter(tags=["questionnaire"])
 
@@ -48,6 +51,7 @@ def _result_response(q: Questionnaire, result: BurnoutResult) -> QuestionnaireRe
         id=q.id,
         user_id=q.user_id,
         type=q.type,
+        session_level=q.session_level,
         submitted_at=q.submitted_at,
         burnout_pressure_score=result.burnout_pressure,
         risk_level=result.risk_level,
@@ -57,7 +61,7 @@ def _result_response(q: Questionnaire, result: BurnoutResult) -> QuestionnaireRe
                 label=c.label,
                 weight=c.weight,
                 score=c.score,
-                question_indices=c.question_indices,
+                question_ids=c.question_ids,
             )
             for c in result.components
         ],
@@ -72,16 +76,38 @@ def questionnaire_result(q: Questionnaire) -> QuestionnaireResult:
     components + interpretation as a fresh submission (reused by the detail
     endpoint and the human-review export).
     """
-    answers = {a.question_index: a.value for a in q.answers}
+    answers = {a.question_id: a.value for a in q.answers}
     return _result_response(q, compute_burnout_score(answers))
 
 
-@router.get("/questionnaire/questions", response_model=list[QuestionOut])
-def list_questions() -> list[QuestionOut]:
-    return [
-        QuestionOut(index=q.index, text=q.text, component=q.component.value, reverse=q.reverse)
-        for q in QUESTIONS
-    ]
+@router.get("/questionnaire/questions", response_model=QuestionSet)
+def list_questions(level: str = "short") -> QuestionSet:
+    """Return a selected question set for a session level (short/base/deep).
+
+    Selection is deterministic (see question_bank.select_session) so the set is
+    stable and comparable. Defaults to the short (15-question) session.
+    """
+    if level not in question_bank.LEVELS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown session level: {level}",
+        )
+    questions = []
+    for qid in question_bank.select_session(level):
+        bq = question_bank.get(qid)
+        questions.append(
+            QuestionOut(
+                question_id=bq.question_id,
+                text=bq.question_text,
+                component=bq.component_id,
+                component_name=bq.component_name,
+                subdimension=bq.subdimension,
+                reverse=bq.reverse_scored,
+                follow_up_question=bq.follow_up_question,
+            )
+        )
+    scale = [ScaleOption(**opt) for opt in question_bank.scale()]
+    return QuestionSet(level=level, scale=scale, questions=questions)
 
 
 @router.post(
@@ -101,9 +127,9 @@ def submit_questionnaire(
             detail="Consent required before submitting operational data",
         )
 
-    answers = {a.question_index: a.value for a in payload.answers}
+    answers = {a.question_id: a.value for a in payload.answers}
     if len(answers) != len(payload.answers):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate question_index")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Duplicate question_id")
 
     try:
         result = compute_burnout_score(answers)
@@ -113,11 +139,13 @@ def submit_questionnaire(
     questionnaire = Questionnaire(
         user_id=user.id,
         type=payload.type,
+        session_level=payload.session_level,
+        question_bank_version=question_bank.bank_version(),
         burnout_pressure_score=result.burnout_pressure,
         risk_level=result.risk_level,
     )
     questionnaire.answers = [
-        QuestionnaireAnswer(question_index=idx, value=value) for idx, value in answers.items()
+        QuestionnaireAnswer(question_id=qid, value=value) for qid, value in answers.items()
     ]
     db.add(questionnaire)
     db.flush()

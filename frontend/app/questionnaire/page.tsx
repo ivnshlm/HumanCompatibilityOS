@@ -10,6 +10,7 @@ import {
   submitQuestionnaire,
   type Question,
   type QuestionnaireResult,
+  type ScaleOption,
 } from "@/lib/api";
 
 const SCALE = [1, 2, 3, 4, 5];
@@ -31,7 +32,8 @@ const RISK_CLASS: Record<QuestionnaireResult["risk_level"], string> = {
 export default function QuestionnairePage() {
   const router = useRouter();
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [scale, setScale] = useState<ScaleOption[]>([]);
+  const [answers, setAnswers] = useState<Record<string, number>>({});
   const [consent, setConsent] = useState(false);
   const [result, setResult] = useState<QuestionnaireResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +45,16 @@ export default function QuestionnairePage() {
       router.replace("/login");
       return;
     }
-    fetchQuestions()
-      .then(setQuestions)
+    fetchQuestions("short")
+      .then((set) => {
+        setQuestions(set.questions);
+        setScale(set.scale);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Ошибка загрузки"))
       .finally(() => setLoading(false));
   }, [router]);
 
-  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.index]);
+  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.question_id]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,10 +63,10 @@ export default function QuestionnairePage() {
     try {
       if (consent) await giveConsent();
       const payload = questions.map((q) => ({
-        question_index: q.index,
-        value: answers[q.index],
+        question_id: q.question_id,
+        value: answers[q.question_id],
       }));
-      const res = await submitQuestionnaire(payload);
+      const res = await submitQuestionnaire(payload, "short");
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка отправки");
@@ -197,35 +202,47 @@ export default function QuestionnairePage() {
     <main className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="text-2xl font-semibold">Опросник среды</h1>
       <p className="mt-2 text-sm opacity-70">
-        Оцените каждое утверждение по шкале от 1 (совсем нет) до 5 (полностью да).
+        Оцените каждое утверждение по шкале согласия от 1 до 5.
       </p>
 
+      {scale.length === 5 && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-50">
+          {scale.map((s) => (
+            <span key={s.value}>
+              <span className="font-medium opacity-80">{s.value}</span> — {s.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
-        {questions.map((q) => (
-          <fieldset key={q.index} className="rounded-xl border border-white/10 bg-white/5 p-5">
+        {questions.map((q, i) => (
+          <fieldset key={q.question_id} className="rounded-xl border border-white/10 bg-white/5 p-5">
             <legend className="sr-only">
-              {q.index}. {q.text}
+              {i + 1}. {q.text}
             </legend>
             <p className="text-sm leading-relaxed">
-              <span className="mr-1 opacity-50">{q.index}.</span>
+              <span className="mr-1 opacity-50">{i + 1}.</span>
               {q.text}
             </p>
+            <div className="mt-1 text-xs opacity-40">{q.component_name} · {q.subdimension}</div>
             <div className="mt-4 flex flex-wrap gap-2">
               {SCALE.map((v) => (
                 <label
                   key={v}
+                  title={scale.find((s) => s.value === v)?.label ?? ""}
                   className={`flex h-10 w-10 cursor-pointer select-none items-center justify-center rounded-lg border text-sm transition-colors ${
-                    answers[q.index] === v
+                    answers[q.question_id] === v
                       ? "border-white/60 bg-white/20"
                       : "border-white/10 bg-white/5 hover:border-white/30"
                   }`}
                 >
                   <input
                     type="radio"
-                    name={`q-${q.index}`}
+                    name={`q-${q.question_id}`}
                     value={v}
-                    checked={answers[q.index] === v}
-                    onChange={() => setAnswers((a) => ({ ...a, [q.index]: v }))}
+                    checked={answers[q.question_id] === v}
+                    onChange={() => setAnswers((a) => ({ ...a, [q.question_id]: v }))}
                     className="sr-only"
                   />
                   {v}

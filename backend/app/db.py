@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import get_settings
@@ -27,9 +27,34 @@ def init_db() -> None:
     """Create tables. MVP-only: replaced by Alembic migrations later."""
     # Import models so they register on Base.metadata before create_all.
     from app import models  # noqa: F401
+    from app.question_bank import validate_bank
 
+    validate_bank()  # fail fast if the question bank resource is malformed
+    _migrate_to_question_bank()
     Base.metadata.create_all(bind=engine)
     bootstrap_admins()
+
+
+def _migrate_to_question_bank() -> None:
+    """One-time cutover from the legacy int-indexed questionnaire to the bank.
+
+    The old `questionnaire_answers` used `question_index` (1..15); the bank uses
+    string `question_id`. SQLAlchemy create_all never alters existing tables, so
+    on a deployed DB we drop the (disposable, pre-bank) questionnaire tables here
+    and let create_all rebuild them with the new schema. Self-disabling: once the
+    `question_id` column exists it never runs again, and on a fresh DB (tests)
+    the table doesn't exist yet so it is a no-op.
+    """
+    insp = inspect(engine)
+    if "questionnaire_answers" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("questionnaire_answers")}
+    if "question_id" in columns:
+        return  # already on the bank schema
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS recalibration_events CASCADE"))
+        conn.execute(text("DROP TABLE IF EXISTS questionnaire_answers CASCADE"))
+        conn.execute(text("DROP TABLE IF EXISTS questionnaires CASCADE"))
 
 
 def bootstrap_admins() -> None:

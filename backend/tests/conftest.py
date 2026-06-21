@@ -44,6 +44,20 @@ def client() -> Generator[TestClient, None, None]:
     app.dependency_overrides.clear()
 
 
+def bank_answers(value: int, level: str = "short") -> list[dict]:
+    """Submission payload answering every question of a session level with `value`."""
+    from app import question_bank
+
+    return [{"question_id": qid, "value": value} for qid in question_bank.select_session(level)]
+
+
+def bank_scores(value: int, level: str = "short") -> dict[str, int]:
+    """{question_id: value} for a session level — direct input to compute_burnout_score."""
+    from app import question_bank
+
+    return {qid: value for qid in question_bank.select_session(level)}
+
+
 def promote_role(email: str, role: str) -> None:
     """Test helper: grant a registered user a privileged role directly.
 

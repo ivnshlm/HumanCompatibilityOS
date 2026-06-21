@@ -17,10 +17,25 @@ export function clearToken(): void {
 }
 
 export interface Question {
-  index: number;
+  question_id: string;
   text: string;
-  component: string;
+  component: string; // bank component_id: DA/DV/KP/PO/NL
+  component_name: string;
+  subdimension: string;
   reverse: boolean;
+  follow_up_question: string;
+}
+
+export interface ScaleOption {
+  value: number;
+  label: string;
+  meaning: string;
+}
+
+export interface QuestionSet {
+  level: string;
+  scale: ScaleOption[];
+  questions: Question[];
 }
 
 export interface ComponentScore {
@@ -28,7 +43,7 @@ export interface ComponentScore {
   label: string;
   weight: number;
   score: number;
-  question_indices: number[];
+  question_ids: string[];
 }
 
 export interface DominantFactor {
@@ -50,6 +65,7 @@ export interface QuestionnaireResult {
   id: string;
   user_id: string;
   type: string;
+  session_level: string | null;
   submitted_at: string;
   burnout_pressure_score: number;
   risk_level: "low" | "medium" | "high";
@@ -316,16 +332,17 @@ export function giveConsent(): Promise<unknown> {
   return request("/auth/consent", { method: "POST", body: JSON.stringify({ consent_given: true }) });
 }
 
-export function fetchQuestions(): Promise<Question[]> {
-  return request("/questionnaire/questions");
+export function fetchQuestions(level = "short"): Promise<QuestionSet> {
+  return request(`/questionnaire/questions?level=${encodeURIComponent(level)}`);
 }
 
 export function submitQuestionnaire(
-  answers: { question_index: number; value: number }[],
+  answers: { question_id: string; value: number }[],
+  sessionLevel = "short",
 ): Promise<QuestionnaireResult> {
   return request("/questionnaire/submit", {
     method: "POST",
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({ answers, session_level: sessionLevel }),
   });
 }
 

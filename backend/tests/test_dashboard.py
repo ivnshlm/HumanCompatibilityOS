@@ -2,14 +2,14 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from conftest import promote_role
+from conftest import bank_answers, bank_scores, promote_role
 
 from app.dashboard import MIN_COHORT, aggregate_team
 from app.scoring import compute_burnout_score
 
 
 def _answers(value: int = 3) -> list[dict]:
-    return [{"question_index": i, "value": value} for i in range(1, 16)]
+    return bank_answers(value)
 
 
 def _register(client: TestClient, email: str, role: str = "employee", team_id: str | None = None) -> str:
@@ -36,7 +36,7 @@ def _member_with_submission(client: TestClient, email: str, team_id: str, value:
 
 
 def test_aggregate_team_suppresses_small_cohort():
-    results = [compute_burnout_score({i: 3 for i in range(1, 16)}) for _ in range(MIN_COHORT - 1)]
+    results = [compute_burnout_score(bank_scores(3)) for _ in range(MIN_COHORT - 1)]
     dash = aggregate_team(results)
     assert dash.sufficient_data is False
     assert dash.blocks == []
@@ -48,7 +48,7 @@ def test_aggregate_team_suppresses_small_cohort():
 
 
 def test_aggregate_team_reports_four_blocks():
-    results = [compute_burnout_score({i: 3 for i in range(1, 16)}) for _ in range(MIN_COHORT)]
+    results = [compute_burnout_score(bank_scores(3)) for _ in range(MIN_COHORT)]
     dash = aggregate_team(results)
     assert dash.sufficient_data is True
     assert {b.block.value for b in dash.blocks} == {

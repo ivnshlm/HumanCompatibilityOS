@@ -30,7 +30,7 @@ def _result(total: float, **scores: float) -> BurnoutResult:
             label=COMPONENT_LABELS_RU[c],
             weight=COMPONENT_WEIGHTS[c],
             score=scores[c.value],
-            question_indices=[],
+            question_ids=[],
         )
         for c in Component
     ]

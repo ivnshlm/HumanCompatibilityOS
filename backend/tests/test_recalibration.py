@@ -7,11 +7,11 @@ from app.recalibration import (
 )
 from app.scoring import compute_burnout_score
 
-from conftest import promote_role
+from conftest import bank_answers, bank_scores, promote_role
 
 
 def _answers(value: int) -> list[dict]:
-    return [{"question_index": i, "value": value} for i in range(1, 16)]
+    return bank_answers(value)
 
 
 def _register_login(client: TestClient, email: str, role: str = "employee", *, consent: bool = True) -> str:
@@ -48,14 +48,14 @@ def test_trend_classification():
 
 
 def test_recommendations_flag_high_driver():
-    result = compute_burnout_score({i: 5 for i in range(1, 16)})  # emergency = 5
+    result = compute_burnout_score(bank_scores(5))  # all-5 -> high
     recs = recommendations_for(result)
     assert len(recs) >= 1
     assert any("аврал" in r.lower() for r in recs)
 
 
 def test_recommendations_general_when_no_driver():
-    result = compute_burnout_score({i: 2 for i in range(1, 16)})  # all components < 3.5
+    result = compute_burnout_score(bank_scores(2))  # all components < 3.5
     recs = recommendations_for(result)
     assert len(recs) == 1
     assert "норм" in recs[0].lower()
