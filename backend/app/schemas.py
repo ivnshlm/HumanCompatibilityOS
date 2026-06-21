@@ -109,6 +109,7 @@ class DominantFactorOut(BaseModel):
     title: str
     score: float
     explanation: str
+    subdimension: str = ""
 
 
 class InterpretationOut(BaseModel):
@@ -117,6 +118,20 @@ class InterpretationOut(BaseModel):
     possible_meaning: str
     check_next: list[str]
     disclaimer: str
+    follow_ups: list[str] | None = None
+
+
+class LayerNoteOut(BaseModel):
+    component: str
+    label: str
+    note: str
+
+
+class ReportLayerOut(BaseModel):
+    layer: str
+    label: str
+    description: str
+    notes: list[LayerNoteOut]
 
 
 class QuestionnaireResult(BaseModel):
@@ -129,6 +144,7 @@ class QuestionnaireResult(BaseModel):
     risk_level: RiskLevel
     components: list[ComponentScoreOut]
     interpretation: InterpretationOut
+    report_layer: ReportLayerOut | None = None
 
 
 class HistoryItem(BaseModel):

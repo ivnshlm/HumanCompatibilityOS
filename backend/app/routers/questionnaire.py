@@ -10,17 +10,19 @@ from app import question_bank
 from app.audit import log_audit
 from app.db import get_db
 from app.deps import get_current_user
-from app.interpretation import build_interpretation
+from app.interpretation import build_interpretation, build_report_layer
 from app.models import Questionnaire, QuestionnaireAnswer, Role, User
 from app.schemas import (
     ComponentScoreOut,
     DominantFactorOut,
     HistoryItem,
     InterpretationOut,
+    LayerNoteOut,
     QuestionnaireResult,
     QuestionnaireSubmit,
     QuestionOut,
     QuestionSet,
+    ReportLayerOut,
     ScaleOption,
 )
 from app.scoring import BurnoutResult, compute_burnout_score
@@ -31,21 +33,45 @@ router = APIRouter(tags=["questionnaire"])
 _REVIEWER_ROLES = {Role.hr, Role.team_lead, Role.admin, Role.ethics_reviewer}
 
 
-def _interpretation_out(result: BurnoutResult) -> InterpretationOut:
-    interp = build_interpretation(result)
+def _interpretation_out(result: BurnoutResult, answers: dict[str, int]) -> InterpretationOut:
+    interp = build_interpretation(result, answers)
     return InterpretationOut(
         summary=interp.summary,
         dominant_factors=[
-            DominantFactorOut(key=f.key, title=f.title, score=f.score, explanation=f.explanation)
+            DominantFactorOut(
+                key=f.key,
+                title=f.title,
+                score=f.score,
+                explanation=f.explanation,
+                subdimension=f.subdimension,
+            )
             for f in interp.dominant_factors
         ],
         possible_meaning=interp.possible_meaning,
         check_next=interp.check_next,
         disclaimer=interp.disclaimer,
+        follow_ups=interp.follow_ups,
     )
 
 
-def _result_response(q: Questionnaire, result: BurnoutResult) -> QuestionnaireResult:
+def _report_layer_out(result: BurnoutResult, viewer_role: str | None) -> ReportLayerOut | None:
+    layer = build_report_layer(result, viewer_role)
+    if layer is None:
+        return None
+    return ReportLayerOut(
+        layer=layer.layer,
+        label=layer.label,
+        description=layer.description,
+        notes=[LayerNoteOut(component=n.component, label=n.label, note=n.note) for n in layer.notes],
+    )
+
+
+def _result_response(
+    q: Questionnaire,
+    result: BurnoutResult,
+    answers: dict[str, int],
+    viewer_role: str | None = None,
+) -> QuestionnaireResult:
     """Assemble the full explainable result (components + interpretation)."""
     return QuestionnaireResult(
         id=q.id,
@@ -65,19 +91,21 @@ def _result_response(q: Questionnaire, result: BurnoutResult) -> QuestionnaireRe
             )
             for c in result.components
         ],
-        interpretation=_interpretation_out(result),
+        interpretation=_interpretation_out(result, answers),
+        report_layer=_report_layer_out(result, viewer_role),
     )
 
 
-def questionnaire_result(q: Questionnaire) -> QuestionnaireResult:
+def questionnaire_result(q: Questionnaire, viewer_role: str | None = None) -> QuestionnaireResult:
     """Rebuild the full explainable result for a stored questionnaire.
 
     Recomputes from the persisted answers so historical entries carry the same
     components + interpretation as a fresh submission (reused by the detail
-    endpoint and the human-review export).
+    endpoint and the human-review export). ``viewer_role`` selects the review
+    report layer (None / participant adds nothing beyond the base reading).
     """
     answers = {a.question_id: a.value for a in q.answers}
-    return _result_response(q, compute_burnout_score(answers))
+    return _result_response(q, compute_burnout_score(answers), answers, viewer_role)
 
 
 @router.get("/questionnaire/questions", response_model=QuestionSet)
@@ -160,7 +188,7 @@ def submit_questionnaire(
     db.commit()
     db.refresh(questionnaire)
 
-    return _result_response(questionnaire, result)
+    return _result_response(questionnaire, result, answers)
 
 
 @router.get("/employee/{employee_id}/history", response_model=list[HistoryItem])
@@ -213,4 +241,4 @@ def questionnaire_detail(
         detail={"subject_user_id": str(q.user_id)},
     )
     db.commit()
-    return questionnaire_result(q)
+    return questionnaire_result(q, viewer_role=user.role.value)

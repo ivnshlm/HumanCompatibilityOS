@@ -21,8 +21,9 @@ contribute.
 
 from dataclasses import dataclass
 
+from app import question_bank
 from app.models import RiskLevel
-from app.scoring import BurnoutResult, Component
+from app.scoring import COMPONENT_BY_BANK_ID, BurnoutResult, Component
 
 # --- Tunables (configurable without touching the generation logic) ---
 
@@ -137,12 +138,33 @@ FORBIDDEN_PHRASES: list[str] = [
 ]
 
 
+# Bank component_id keyed by internal Component (inverse of scoring's map).
+BANK_ID_BY_COMPONENT = {v: k for k, v in COMPONENT_BY_BANK_ID.items()}
+
+# Which review layer each role sees (see report_layers in the bank).
+ROLE_TO_LAYER = {
+    "employee": "participant",
+    "hr": "hrd",
+    "team_lead": "manager",
+    "admin": "architect",
+    "ethics_reviewer": "architect",
+}
+
+LAYER_LABELS_RU = {
+    "participant": "Слой сотрудника",
+    "hrd": "Слой HRD",
+    "manager": "Слой руководителя",
+    "architect": "Слой архитектора среды",
+}
+
+
 @dataclass(frozen=True)
 class DominantFactor:
     key: str
     title: str
     score: float
     explanation: str
+    subdimension: str = ""
 
 
 @dataclass(frozen=True)
@@ -152,6 +174,22 @@ class Interpretation:
     possible_meaning: str
     check_next: list[str]
     disclaimer: str
+    follow_ups: list[str] | None = None
+
+
+@dataclass(frozen=True)
+class LayerNote:
+    component: str
+    label: str
+    note: str
+
+
+@dataclass(frozen=True)
+class ReportLayer:
+    layer: str  # participant | hrd | manager | architect
+    label: str
+    description: str
+    notes: list[LayerNote]
 
 
 def _join_names(names: list[str]) -> str:
@@ -187,12 +225,36 @@ def _dominant_components(result: BurnoutResult) -> list:
     return dominant
 
 
-def build_interpretation(result: BurnoutResult) -> Interpretation:
+def _dominant_item(component: Component, answers: dict[str, int] | None):
+    """The answered bank item contributing the most pressure in a component.
+
+    Used to surface the leading subdimension and its drill-down follow-up.
+    Returns None when no answers are available (e.g. legacy recompute).
+    """
+    if not answers:
+        return None
+    bank_id = BANK_ID_BY_COMPONENT[component]
+    scored = []
+    for qid, value in answers.items():
+        bq = question_bank.get(qid)
+        if bq is None or bq.component_id != bank_id:
+            continue
+        oriented = (6 - value) if bq.scoring_direction == "protective_reverse" else value
+        scored.append((oriented, bq.question_id, bq))
+    if not scored:
+        return None
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    return scored[0][2]
+
+
+def build_interpretation(
+    result: BurnoutResult, answers: dict[str, int] | None = None
+) -> Interpretation:
     """Generate the careful, explainable interpretation for a result.
 
-    Pure function of the scored ``BurnoutResult`` — does not touch the database
-    or the original formula. Safe to reuse anywhere the result is shown
-    (submit response, history detail, human-review export).
+    Pure function of the scored ``BurnoutResult`` (+ optional answer map for the
+    subdimension/follow-up enrichment) — does not touch the database or the
+    original formula. Safe to reuse anywhere the result is shown.
     """
     dominant = _dominant_components(result)
     dominant_keys = {c.component for c in dominant}
@@ -213,16 +275,22 @@ def build_interpretation(result: BurnoutResult) -> Interpretation:
             "гипотеза — давление связано с режимом работы и нагрузкой, а не с управлением."
         )
 
-    # --- dominant factors (cards) ---
-    dominant_factors = [
-        DominantFactor(
-            key=c.component.value,
-            title=c.label,
-            score=c.score,
-            explanation=EXPLANATION[c.component],
+    # --- dominant factors (cards) + leading subdimension / drill-down follow-ups ---
+    dominant_factors: list[DominantFactor] = []
+    follow_ups: list[str] = []
+    for c in dominant:
+        item = _dominant_item(c.component, answers)
+        dominant_factors.append(
+            DominantFactor(
+                key=c.component.value,
+                title=c.label,
+                score=c.score,
+                explanation=EXPLANATION[c.component],
+                subdimension=item.subdimension if item else "",
+            )
         )
-        for c in dominant
-    ]
+        if item and item.follow_up_question and item.follow_up_question not in follow_ups:
+            follow_ups.append(item.follow_up_question)
 
     # --- possible meaning (cautious hypothesis, not a diagnosis) ---
     possible_meaning = (
@@ -245,4 +313,38 @@ def build_interpretation(result: BurnoutResult) -> Interpretation:
         possible_meaning=possible_meaning,
         check_next=check_next,
         disclaimer=DISCLAIMER,
+        follow_ups=follow_ups or None,
+    )
+
+
+def build_report_layer(result: BurnoutResult, role: str | None) -> ReportLayer | None:
+    """Role-specific framing of the dominant factors (spec report_layers).
+
+    Reviewers (HR/manager/architect) get curated, environment-focused guidance
+    per dominant component (hrd_layer / manager_layer / architect_layer). The
+    participant (employee) layer adds nothing beyond the careful base reading, so
+    None is returned — the subject always sees the explainable participant view.
+    """
+    layer = ROLE_TO_LAYER.get(role or "", "participant")
+    if layer == "participant":
+        return None
+
+    comp_meta = question_bank.components()
+    notes: list[LayerNote] = []
+    for c in _dominant_components(result):
+        meta = comp_meta.get(BANK_ID_BY_COMPONENT[c.component])
+        if meta is None:
+            continue
+        note = {
+            "hrd": meta.hrd_layer,
+            "manager": meta.manager_layer,
+            "architect": meta.architect_layer,
+        }[layer]
+        notes.append(LayerNote(component=c.component.value, label=c.label, note=note))
+
+    return ReportLayer(
+        layer=layer,
+        label=LAYER_LABELS_RU[layer],
+        description=question_bank.report_layers().get(layer, ""),
+        notes=notes,
     )

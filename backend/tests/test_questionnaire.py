@@ -76,6 +76,11 @@ def test_submit_and_score(client: TestClient):
     assert len(body["components"]) == 5
     assert body["interpretation"]["summary"]
     assert body["interpretation"]["disclaimer"]
+    # PR3 enrichment: drill-down follow-ups + leading subdimension on each factor.
+    assert body["interpretation"]["follow_ups"]
+    assert all(f["subdimension"] for f in body["interpretation"]["dominant_factors"])
+    # Subject (employee) viewing their own submit gets no reviewer report layer.
+    assert body["report_layer"] is None
 
 
 def test_submit_missing_component_rejected(client: TestClient):
@@ -166,10 +171,12 @@ def test_detail_rbac_and_404(client: TestClient):
     r = client.get(f"/questionnaire/{qid}", headers={"Authorization": f"Bearer {other}"})
     assert r.status_code == 403
 
-    # A reviewer can.
+    # A reviewer can — and gets a role-specific report layer (HR -> hrd).
     hr = _register_login(client, "detail_hr@example.com", role="hr")
     r = client.get(f"/questionnaire/{qid}", headers={"Authorization": f"Bearer {hr}"})
     assert r.status_code == 200
+    layer = r.json()["report_layer"]
+    assert layer is not None and layer["layer"] == "hrd" and layer["notes"]
 
     # Unknown id → 404.
     r = client.get(f"/questionnaire/{uuid.uuid4()}", headers=emp_headers)

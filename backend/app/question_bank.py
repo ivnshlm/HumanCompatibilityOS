@@ -83,6 +83,12 @@ def scale() -> list[dict]:
 
 
 @lru_cache(maxsize=1)
+def report_layers() -> dict[str, str]:
+    """Per-audience framing of the result (participant/hrd/manager/architect)."""
+    return dict(_raw().get("report_layers", {}))
+
+
+@lru_cache(maxsize=1)
 def components() -> dict[str, ComponentMeta]:
     out: dict[str, ComponentMeta] = {}
     for c in _raw()["components"]:

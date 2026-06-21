@@ -91,7 +91,7 @@ def export_employee(
         generated_at=datetime.now(UTC),
         disclaimer=_DISCLAIMER_RU,
         user=UserRead.model_validate(subject),
-        questionnaires=[questionnaire_result(q) for q in questionnaires],
+        questionnaires=[questionnaire_result(q, viewer_role=user.role.value) for q in questionnaires],
         recalibration=build_timeline(db, employee_id),
         calibration_reviews=[
             CalibrationReviewOut(
