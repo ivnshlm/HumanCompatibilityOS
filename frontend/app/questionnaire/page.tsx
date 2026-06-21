@@ -121,7 +121,12 @@ export default function QuestionnairePage() {
                 className="rounded-lg border border-white/10 bg-white/5 px-4 py-3"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium">{f.title}</div>
+                  <div className="text-sm font-medium">
+                    {f.title}
+                    {f.subdimension && (
+                      <span className="ml-2 text-xs font-normal opacity-50">· {f.subdimension}</span>
+                    )}
+                  </div>
                   <div className="text-lg font-semibold tabular-nums">{f.score.toFixed(2)}</div>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed opacity-60">{f.explanation}</p>
@@ -151,6 +156,23 @@ export default function QuestionnairePage() {
             ))}
           </ul>
         </section>
+
+        {/* Вопросы для углублённого разбора (follow-ups) */}
+        {interp.follow_ups && interp.follow_ups.length > 0 && (
+          <details className="mt-8 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
+            <summary className="cursor-pointer select-none text-sm font-medium opacity-90">
+              Вопросы для углублённого разбора
+            </summary>
+            <ul className="mt-3 space-y-1.5 text-sm leading-relaxed opacity-80">
+              {interp.follow_ups.map((q, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="opacity-40">—</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         {/* Как считался результат (раскрытие + полный разбор по компонентам) */}
         <details className="mt-8 rounded-xl border border-white/10 bg-white/5 px-5 py-4">

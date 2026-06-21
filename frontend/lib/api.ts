@@ -51,6 +51,7 @@ export interface DominantFactor {
   title: string;
   score: number;
   explanation: string;
+  subdimension: string;
 }
 
 export interface Interpretation {
@@ -59,6 +60,20 @@ export interface Interpretation {
   possible_meaning: string;
   check_next: string[];
   disclaimer: string;
+  follow_ups: string[] | null;
+}
+
+export interface LayerNote {
+  component: string;
+  label: string;
+  note: string;
+}
+
+export interface ReportLayer {
+  layer: string;
+  label: string;
+  description: string;
+  notes: LayerNote[];
 }
 
 export interface QuestionnaireResult {
@@ -71,6 +86,7 @@ export interface QuestionnaireResult {
   risk_level: "low" | "medium" | "high";
   components: ComponentScore[];
   interpretation: Interpretation;
+  report_layer: ReportLayer | null;
 }
 
 export type RiskLevel = "low" | "medium" | "high";

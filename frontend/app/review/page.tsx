@@ -46,7 +46,10 @@ function InterpretationView({ result }: { result: QuestionnaireResult }) {
         <div className="mt-1 space-y-1">
           {it.dominant_factors.map((f) => (
             <div key={f.key} className="flex justify-between gap-3">
-              <span className="opacity-90">{f.title}</span>
+              <span className="opacity-90">
+                {f.title}
+                {f.subdimension && <span className="ml-2 text-xs opacity-50">· {f.subdimension}</span>}
+              </span>
               <span className="font-semibold tabular-nums">{f.score.toFixed(2)}</span>
             </div>
           ))}
@@ -63,6 +66,36 @@ function InterpretationView({ result }: { result: QuestionnaireResult }) {
           ))}
         </ul>
       </div>
+
+      {it.follow_ups && it.follow_ups.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wide opacity-50">Вопросы для углублённого разбора</div>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 opacity-80">
+            {it.follow_ups.map((q, i) => (
+              <li key={i}>{q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {result.report_layer && (
+        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+          <div className="text-xs font-medium uppercase tracking-wide opacity-60">
+            {result.report_layer.label}
+          </div>
+          {result.report_layer.description && (
+            <p className="mt-1 text-xs leading-relaxed opacity-70">{result.report_layer.description}</p>
+          )}
+          <div className="mt-2 space-y-1.5">
+            {result.report_layer.notes.map((n) => (
+              <div key={n.component} className="text-xs leading-relaxed">
+                <span className="font-medium opacity-80">{n.label}.</span>{" "}
+                <span className="opacity-70">{n.note}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="text-xs leading-relaxed opacity-50">{it.disclaimer}</p>
     </div>
