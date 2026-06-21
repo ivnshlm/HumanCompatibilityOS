@@ -2,18 +2,18 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from conftest import promote_role
+from conftest import bank_answers, bank_scores, promote_role
 
 from app.pilot import PILOT_TARGET_PCT, compute_pilot_report
 from app.scoring import compute_burnout_score
 
 
 def _res(value: int):
-    return compute_burnout_score({i: value for i in range(1, 16)})
+    return compute_burnout_score(bank_scores(value))
 
 
 def _answers(value: int) -> list[dict]:
-    return [{"question_index": i, "value": value} for i in range(1, 16)]
+    return bank_answers(value)
 
 
 def _register_login(

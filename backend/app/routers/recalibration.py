@@ -44,7 +44,7 @@ def _can_access_subject(actor: User, subject_id: uuid.UUID) -> bool:
 def _result_for(questionnaire: Questionnaire | None) -> BurnoutResult | None:
     if questionnaire is None:
         return None
-    answers = {a.question_index: a.value for a in questionnaire.answers}
+    answers = {a.question_id: a.value for a in questionnaire.answers}
     try:
         return compute_burnout_score(answers)
     except ValueError:

@@ -63,20 +63,36 @@ class ConsentRequest(BaseModel):
 # --- Questionnaire & scoring ---
 
 
+class ScaleOption(BaseModel):
+    value: int
+    label: str
+    meaning: str
+
+
 class QuestionOut(BaseModel):
-    index: int
+    question_id: str
     text: str
-    component: str
+    component: str  # bank component_id: DA/DV/KP/PO/NL
+    component_name: str
+    subdimension: str
     reverse: bool
+    follow_up_question: str
+
+
+class QuestionSet(BaseModel):
+    level: str  # short | base | deep
+    scale: list[ScaleOption]
+    questions: list[QuestionOut]
 
 
 class AnswerIn(BaseModel):
-    question_index: int = Field(ge=1, le=15)
+    question_id: str = Field(min_length=3, max_length=40)
     value: int = Field(ge=1, le=5)
 
 
 class QuestionnaireSubmit(BaseModel):
     type: str = "burnout"
+    session_level: str = "short"
     answers: list[AnswerIn] = Field(min_length=1)
 
 
@@ -85,7 +101,7 @@ class ComponentScoreOut(BaseModel):
     label: str
     weight: float
     score: float
-    question_indices: list[int]
+    question_ids: list[str]
 
 
 class DominantFactorOut(BaseModel):
@@ -107,6 +123,7 @@ class QuestionnaireResult(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     type: str
+    session_level: str | None
     submitted_at: datetime
     burnout_pressure_score: float
     risk_level: RiskLevel

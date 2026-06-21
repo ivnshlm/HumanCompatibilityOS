@@ -81,8 +81,10 @@ class Questionnaire(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )
     type: Mapped[str] = mapped_column(String(50), default="burnout", nullable=False)
+    # Question Bank session: which level (short/base/deep) and bank version were used.
+    session_level: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    question_bank_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
-    # Scored in Phase 2; nullable until then.
     burnout_pressure_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     risk_level: Mapped[RiskLevel | None] = mapped_column(Enum(RiskLevel, native_enum=False), nullable=True)
 
@@ -102,7 +104,7 @@ class QuestionnaireAnswer(Base):
     questionnaire_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("questionnaires.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    question_index: Mapped[int] = mapped_column(Integer, nullable=False)  # 1..15
+    question_id: Mapped[str] = mapped_column(String(40), nullable=False)  # bank id, e.g. HCO_DA_001
     value: Mapped[int] = mapped_column(Integer, nullable=False)  # 1..5
 
     questionnaire: Mapped["Questionnaire"] = relationship(back_populates="answers")

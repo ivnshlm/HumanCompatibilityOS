@@ -2,7 +2,9 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from conftest import promote_role
+from app import question_bank
+
+from conftest import bank_answers, promote_role
 
 
 def _register_login(client: TestClient, email: str, role: str = "employee", *, consent: bool = True) -> str:
@@ -25,15 +27,29 @@ def _register_login(client: TestClient, email: str, role: str = "employee", *, c
 
 
 def _answers(value: int = 3) -> list[dict]:
-    return [{"question_index": i, "value": value} for i in range(1, 16)]
+    return bank_answers(value)
 
 
-def test_list_questions(client: TestClient):
-    r = client.get("/questionnaire/questions")
+def test_list_questions_short(client: TestClient):
+    r = client.get("/questionnaire/questions")  # default level=short
     assert r.status_code == 200
-    questions = r.json()
+    body = r.json()
+    assert body["level"] == "short"
+    assert len(body["scale"]) == 5
+    questions = body["questions"]
     assert len(questions) == 15
-    assert {q["index"] for q in questions} == set(range(1, 16))
+    # 3 per component, all valid bank ids, distinct.
+    assert {q["question_id"] for q in questions} == set(question_bank.select_session("short"))
+    comps = {}
+    for q in questions:
+        comps[q["component"]] = comps.get(q["component"], 0) + 1
+    assert comps == {"DA": 3, "DV": 3, "KP": 3, "PO": 3, "NL": 3}
+
+
+def test_list_questions_levels(client: TestClient):
+    assert len(client.get("/questionnaire/questions?level=base").json()["questions"]) == 25
+    assert len(client.get("/questionnaire/questions?level=deep").json()["questions"]) == 40
+    assert client.get("/questionnaire/questions?level=bogus").status_code == 400
 
 
 def test_submit_requires_consent(client: TestClient):
@@ -62,11 +78,13 @@ def test_submit_and_score(client: TestClient):
     assert body["interpretation"]["disclaimer"]
 
 
-def test_submit_incomplete_rejected(client: TestClient):
+def test_submit_missing_component_rejected(client: TestClient):
     token = _register_login(client, "incomplete@example.com")
+    # Drop a whole component (all DA items) -> the score can't be computed.
+    answers = [a for a in _answers(3) if not a["question_id"].startswith("HCO_DA_")]
     r = client.post(
         "/questionnaire/submit",
-        json={"answers": _answers(3)[:14]},
+        json={"answers": answers},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 400

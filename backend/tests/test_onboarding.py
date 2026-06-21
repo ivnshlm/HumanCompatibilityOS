@@ -5,15 +5,15 @@ from fastapi.testclient import TestClient
 from app.onboarding import FRICTION_THRESHOLD, compute_onboarding_health
 from app.scoring import compute_burnout_score
 
-from conftest import promote_role
+from conftest import bank_answers, bank_scores, promote_role
 
 
 def _res(value: int):
-    return compute_burnout_score({i: value for i in range(1, 16)})
+    return compute_burnout_score(bank_scores(value))
 
 
 def _answers(value: int) -> list[dict]:
-    return [{"question_index": i, "value": value} for i in range(1, 16)]
+    return bank_answers(value)
 
 
 def _register_login(

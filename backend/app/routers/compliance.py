@@ -63,7 +63,7 @@ def _result_for(db: Session, questionnaire_id: uuid.UUID | None) -> BurnoutResul
     questionnaire = db.get(Questionnaire, questionnaire_id)
     if questionnaire is None:
         return None
-    answers = {a.question_index: a.value for a in questionnaire.answers}
+    answers = {a.question_id: a.value for a in questionnaire.answers}
     try:
         return compute_burnout_score(answers)
     except ValueError:

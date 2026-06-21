@@ -70,7 +70,7 @@ def team_dashboard(
         )
         if latest is None:
             continue
-        answers = {a.question_index: a.value for a in latest.answers}
+        answers = {a.question_id: a.value for a in latest.answers}
         try:
             results.append(compute_burnout_score(answers))
         except ValueError:
