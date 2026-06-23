@@ -58,7 +58,7 @@ export default function AuditPage() {
         </p>
       </header>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
 
       <div className="overflow-hidden rounded-xl border border-white/10">
         <table className="w-full text-sm">

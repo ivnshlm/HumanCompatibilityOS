@@ -8,10 +8,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Calm risk palette by doctrine — high is muted orange, never red.
+        // Source of truth for class-based risk colour stays in lib/risk.ts.
         risk: {
-          low: "#16a34a",
-          medium: "#d97706",
-          high: "#dc2626",
+          low: "#34d399", // emerald-400
+          medium: "#fbbf24", // amber-400
+          high: "#fb923c", // orange-400
         },
       },
     },
