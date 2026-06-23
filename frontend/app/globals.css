@@ -5,10 +5,24 @@
 :root {
   --background: #0b0f1a;
   --foreground: #e8edf5;
+
+  /* Design-system tokens (P1). Class-based usage via Tailwind theme colors;
+     these vars exist for raw CSS / future theming. */
+  --surface: #121826;
+  --surface-2: #0f1422;
+  --edge: #212a3b;
+  --edge-2: #1a2232;
+  --text-muted: #9aa3b8;
+  --text-faint: #5f6982;
+  --accent: #6d72e0;
 }
 
 body {
   background: var(--background);
+  /* Subtle top gradient toward #0e1424 (design token, optional). */
+  background-image: linear-gradient(180deg, #0e1424 0%, var(--background) 480px);
+  background-repeat: no-repeat;
   color: var(--foreground);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-inter-tight), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
