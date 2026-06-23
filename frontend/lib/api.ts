@@ -182,6 +182,14 @@ export interface AdminUserPatch {
   team_id?: string | null;
 }
 
+export interface AdminUserCreate {
+  email: string;
+  password: string;
+  full_name: string;
+  role?: Me["role"];
+  team_id?: string | null;
+}
+
 export interface HistoryItem {
   id: string;
   type: string;
@@ -400,6 +408,10 @@ export function fetchAdminUsers(): Promise<AdminUser[]> {
 
 export function updateAdminUser(id: string, patch: AdminUserPatch): Promise<AdminUser> {
   return request(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export function createAdminUser(body: AdminUserCreate): Promise<AdminUser> {
+  return request("/admin/users", { method: "POST", body: JSON.stringify(body) });
 }
 
 export function fetchEmployeeHistory(userId: string): Promise<HistoryItem[]> {
