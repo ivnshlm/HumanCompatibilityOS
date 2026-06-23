@@ -14,7 +14,8 @@ from app.audit import log_audit
 from app.db import get_db
 from app.deps import require_roles
 from app.models import Role, User
-from app.schemas import AdminUserUpdate, UserRead
+from app.schemas import AdminUserCreate, AdminUserUpdate, UserRead
+from app.security import hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -34,6 +35,40 @@ def list_all_users(
 ) -> list[User]:
     """Full user directory for management (admin only)."""
     return list(db.scalars(select(User).order_by(User.full_name)).all())
+
+
+@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+def create_user(
+    payload: AdminUserCreate,
+    actor: User = Depends(_require_admin),
+    db: Session = Depends(get_db),
+) -> User:
+    """Create a user directly (admin only) — role and team may be set on creation."""
+    existing = db.scalar(select(User).where(User.email == payload.email))
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    user = User(
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        full_name=payload.full_name,
+        role=payload.role,
+        team_id=payload.team_id,
+        is_active=payload.is_active,
+    )
+    db.add(user)
+    db.flush()
+    log_audit(
+        db,
+        actor_user_id=actor.id,
+        action="admin.user.create",
+        entity_type="user",
+        entity_id=str(user.id),
+        detail={"email": payload.email, "role": user.role.value},
+    )
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.patch("/users/{user_id}", response_model=UserRead)

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
+  createAdminUser,
   fetchAdminUsers,
   fetchMe,
   getToken,
@@ -30,6 +31,15 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  // Create-user form
+  const [nEmail, setNEmail] = useState("");
+  const [nName, setNName] = useState("");
+  const [nPassword, setNPassword] = useState("");
+  const [nRole, setNRole] = useState<Me["role"]>("employee");
+  const [nTeam, setNTeam] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<string | null>(null);
+
   useEffect(() => {
     if (!getToken()) {
       router.replace("/login");
@@ -51,6 +61,33 @@ export default function AdminPage() {
       }
     })();
   }, [router]);
+
+  async function onCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    setError(null);
+    setCreated(null);
+    try {
+      const u = await createAdminUser({
+        email: nEmail.trim(),
+        password: nPassword,
+        full_name: nName.trim(),
+        role: nRole,
+        team_id: nTeam.trim() || null,
+      });
+      setUsers((list) => [u, ...list]);
+      setCreated(`Пользователь ${u.email} создан (${u.role}).`);
+      setNEmail("");
+      setNName("");
+      setNPassword("");
+      setNRole("employee");
+      setNTeam("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось создать пользователя");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function patch(id: string, body: AdminUserPatch) {
     setSavingId(id);
@@ -90,6 +127,64 @@ export default function AdminPage() {
       </header>
 
       {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
+      {created && <p className="mb-4 text-sm text-emerald-400">{created}</p>}
+
+      <form
+        onSubmit={onCreate}
+        className="mb-8 rounded-xl border border-white/10 bg-white/5 p-4"
+      >
+        <div className="text-sm font-medium">Создать пользователя</div>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <input
+            type="email"
+            required
+            value={nEmail}
+            onChange={(e) => setNEmail(e.target.value)}
+            placeholder="email"
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40 focus:border-white/30"
+          />
+          <input
+            required
+            value={nName}
+            onChange={(e) => setNName(e.target.value)}
+            placeholder="Имя"
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40 focus:border-white/30"
+          />
+          <input
+            type="password"
+            required
+            minLength={8}
+            value={nPassword}
+            onChange={(e) => setNPassword(e.target.value)}
+            placeholder="Пароль (мин. 8)"
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40 focus:border-white/30"
+          />
+          <input
+            value={nTeam}
+            onChange={(e) => setNTeam(e.target.value)}
+            placeholder="team_id (необязательно)"
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40 focus:border-white/30"
+          />
+          <select
+            value={nRole}
+            onChange={(e) => setNRole(e.target.value as Me["role"])}
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/30"
+          >
+            {ROLES.map((r) => (
+              <option key={r.value} value={r.value} className="bg-neutral-900">
+                {r.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="submit"
+            disabled={creating}
+            className="rounded-lg bg-white/90 px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
+          >
+            {creating ? "Создание…" : "Создать"}
+          </button>
+        </div>
+      </form>
 
       <div className="space-y-2">
         {users.map((u) => {

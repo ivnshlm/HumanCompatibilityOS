@@ -107,3 +107,49 @@ def test_admin_404_for_unknown_user(client: TestClient):
     admin = _admin(client, "owner3@example.com")
     r = client.patch(f"/admin/users/{uuid.uuid4()}", json={"role": "hr"}, headers=_h(admin))
     assert r.status_code == 404
+
+
+def test_admin_creates_user_with_role(client: TestClient):
+    admin = _admin(client, "owner4@example.com")
+    team = str(uuid.uuid4())
+    r = client.post(
+        "/admin/users",
+        json={
+            "email": "created-hr@example.com",
+            "password": "password123",
+            "full_name": "Created HR",
+            "role": "hr",
+            "team_id": team,
+        },
+        headers=_h(admin),
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["role"] == "hr"
+    assert body["team_id"] == team
+
+    # The created user can log in and already has the HR role (reviewer access).
+    hr = _login(client, "created-hr@example.com")
+    assert client.get("/users", headers=_h(hr)).status_code == 200
+
+
+def test_admin_create_duplicate_email_conflicts(client: TestClient):
+    admin = _admin(client, "owner5@example.com")
+    _register(client, "taken@example.com")
+    r = client.post(
+        "/admin/users",
+        json={"email": "taken@example.com", "password": "password123", "full_name": "Dup"},
+        headers=_h(admin),
+    )
+    assert r.status_code == 409
+
+
+def test_admin_create_forbidden_for_non_admin(client: TestClient):
+    _register(client, "plain@example.com")
+    emp = _login(client, "plain@example.com")
+    r = client.post(
+        "/admin/users",
+        json={"email": "x@example.com", "password": "password123", "full_name": "X"},
+        headers=_h(emp),
+    )
+    assert r.status_code == 403
