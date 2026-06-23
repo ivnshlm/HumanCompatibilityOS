@@ -1,5 +1,15 @@
 import type { Metadata } from "next";
+import { Inter_Tight } from "next/font/google";
 import "./globals.css";
+
+// Design-system typography: Inter Tight with Cyrillic, self-hosted via next/font
+// (no layout shift). Exposed as a CSS variable consumed in globals.css.
+const interTight = Inter_Tight({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter-tight",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Human Compatibility OS",
@@ -12,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru">
+    <html lang="ru" className={interTight.variable}>
       <body>
         <header className="border-b border-white/10">
           <div className="mx-auto flex max-w-6xl items-center px-6 py-3">
