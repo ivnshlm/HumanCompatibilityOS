@@ -25,13 +25,13 @@ const RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
 const RISK_BTN: Record<RiskLevel, string> = {
   low: "border-emerald-400/60 bg-emerald-400/15 text-emerald-300",
   medium: "border-amber-400/60 bg-amber-400/15 text-amber-300",
-  high: "border-red-400/60 bg-red-400/15 text-red-300",
+  high: "border-orange-400/60 bg-orange-400/15 text-orange-300",
 };
 const RISK_RU: Record<RiskLevel, string> = { low: "Низкий", medium: "Средний", high: "Высокий" };
 const OVERALL_DOT: Record<OverallRisk, string> = {
   green: "bg-emerald-400",
   yellow: "bg-amber-400",
-  red: "bg-red-400",
+  red: "bg-orange-400",
 };
 
 export default function HiringPage() {
@@ -161,7 +161,7 @@ export default function HiringPage() {
         </p>
       </header>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
         {/* Candidate list + add */}

@@ -10,8 +10,8 @@ import {
   getToken,
   type RecalibrationCycle,
   type RecalibrationTimeline,
-  type RiskLevel,
 } from "@/lib/api";
+import { RISK_TEXT } from "@/lib/risk";
 
 const CYCLE_LABEL: Record<RecalibrationCycle, string> = {
   baseline: "Базовая точка",
@@ -24,15 +24,9 @@ const CYCLES: RecalibrationCycle[] = ["baseline", "day_30", "day_90", "retrospec
 
 const TREND_TEXT: Record<RecalibrationTimeline["trend"], string> = {
   improving: "text-emerald-400",
-  worsening: "text-red-400",
+  worsening: "text-orange-400",
   stable: "text-amber-400",
   insufficient: "opacity-60",
-};
-
-const RISK_TEXT: Record<RiskLevel, string> = {
-  low: "text-emerald-400",
-  medium: "text-amber-400",
-  high: "text-red-400",
 };
 
 function formatDelta(delta: number | null): string {
@@ -104,7 +98,7 @@ export default function RecalibrationPage() {
         </p>
       </header>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
 
       {timeline && (
         <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">

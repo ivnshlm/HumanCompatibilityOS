@@ -55,7 +55,7 @@ export default function LoginPage() {
           />
         </label>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-orange-400">{error}</p>}
 
         <button
           type="submit"

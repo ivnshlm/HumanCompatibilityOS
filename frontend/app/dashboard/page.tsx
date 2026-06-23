@@ -18,26 +18,9 @@ import {
   type RiskLevel,
   type TeamDashboard,
 } from "@/lib/api";
+import { RISK_DOT, RISK_LABEL, RISK_TEXT } from "@/lib/risk";
 
 const REVIEWER_ROLES = new Set(["hr", "team_lead", "admin", "ethics_reviewer"]);
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: "Низкий",
-  medium: "Средний",
-  high: "Высокий",
-};
-
-const RISK_TEXT: Record<RiskLevel, string> = {
-  low: "text-emerald-400",
-  medium: "text-amber-400",
-  high: "text-red-400",
-};
-
-const RISK_DOT: Record<RiskLevel, string> = {
-  low: "bg-emerald-400",
-  medium: "bg-amber-400",
-  high: "bg-red-400",
-};
 
 function BlockCard({ block }: { block: BlockAggregate }) {
   const total =
@@ -63,7 +46,7 @@ function BlockCard({ block }: { block: BlockAggregate }) {
           <div className="flex h-2 overflow-hidden rounded-full bg-white/10">
             <div className="bg-emerald-400/80" style={{ width: `${(block.distribution.low / total) * 100}%` }} />
             <div className="bg-amber-400/80" style={{ width: `${(block.distribution.medium / total) * 100}%` }} />
-            <div className="bg-red-400/80" style={{ width: `${(block.distribution.high / total) * 100}%` }} />
+            <div className="bg-orange-400/80" style={{ width: `${(block.distribution.high / total) * 100}%` }} />
           </div>
           <div className="mt-2 flex gap-4 text-xs opacity-60">
             <span>низкий {block.distribution.low}</span>
@@ -127,7 +110,7 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-orange-400">{error}</p>}
 
       {me && !REVIEWER_ROLES.has(me.role) && (
         <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm opacity-80">
@@ -236,7 +219,7 @@ export default function DashboardPage() {
             {onboarding.integration_friction !== null && (
               <div className="text-sm">
                 трение интеграции:{" "}
-                <span className={onboarding.friction_flag ? "text-red-400" : "text-emerald-400"}>
+                <span className={onboarding.friction_flag ? "text-orange-400" : "text-emerald-400"}>
                   {onboarding.integration_friction > 0 ? "+" : ""}
                   {onboarding.integration_friction.toFixed(2)}
                   {onboarding.friction_flag ? " (внимание)" : " (норма)"}

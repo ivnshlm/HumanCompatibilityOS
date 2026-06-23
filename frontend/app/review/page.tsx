@@ -246,7 +246,7 @@ export default function ReviewPage() {
         </p>
       </header>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
 
       <label className="block">
         <span className="text-sm opacity-70">Сотрудник</span>
