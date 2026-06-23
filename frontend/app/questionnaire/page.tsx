@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   fetchQuestions,
@@ -12,21 +12,16 @@ import {
   type QuestionnaireResult,
   type ScaleOption,
 } from "@/lib/api";
+import { RESULT_DISCLAIMER, RISK_TEXT } from "@/lib/risk";
+import { Button, Card, Disclaimer, ProgressBar, SectionHeader } from "@/components/ui";
 
 const SCALE = [1, 2, 3, 4, 5];
 
 // Safe-language labels (§6): name the overload regime, not the person.
 const RISK_LABEL: Record<QuestionnaireResult["risk_level"], string> = {
-  low: "Низкий риск",
+  low: "Низкий риск перегруза",
   medium: "Средний риск перегруза",
   high: "Высокий риск перегруза",
-};
-
-// Calm palette: high risk is a muted warning, never an aggressive red verdict.
-const RISK_CLASS: Record<QuestionnaireResult["risk_level"], string> = {
-  low: "text-emerald-400",
-  medium: "text-amber-400",
-  high: "text-orange-400",
 };
 
 const LEVELS = [
@@ -34,6 +29,8 @@ const LEVELS = [
   { id: "base", label: "Базовый", hint: "25 вопросов · ~10 мин" },
   { id: "deep", label: "Углублённый", hint: "40 вопросов · ~15–20 мин" },
 ] as const;
+
+const storageKey = (level: string) => `hcos_qn_${level}`;
 
 export default function QuestionnairePage() {
   const router = useRouter();
@@ -47,35 +44,73 @@ export default function QuestionnairePage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  const [started, setStarted] = useState(false);
+  const [step, setStep] = useState(0); // 0..N-1 questions, N = consent step
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load the question set for the chosen level + restore any autosaved answers.
   useEffect(() => {
     if (!getToken()) {
       router.replace("/login");
       return;
     }
     setLoading(true);
+    setStarted(false);
+    setStep(0);
     fetchQuestions(level)
       .then((set) => {
         setQuestions(set.questions);
         setScale(set.scale);
-        setAnswers({}); // a new level is a different question set
+        try {
+          const saved = localStorage.getItem(storageKey(level));
+          setAnswers(saved ? (JSON.parse(saved) as Record<string, number>) : {});
+        } catch {
+          setAnswers({});
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Ошибка загрузки"))
       .finally(() => setLoading(false));
   }, [router, level]);
 
-  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.question_id]);
+  // Autosave answers per level.
+  useEffect(() => {
+    if (questions.length === 0) return;
+    try {
+      localStorage.setItem(storageKey(level), JSON.stringify(answers));
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [answers, level, questions.length]);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+  }, []);
+
+  const total = questions.length;
+  const answeredCount = questions.filter((q) => answers[q.question_id]).length;
+  const allAnswered = total > 0 && answeredCount === total;
+
+  const selectAnswer = useCallback(
+    (qid: string, value: number, lastIndex: number) => {
+      setAnswers((a) => ({ ...a, [qid]: value }));
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+      advanceTimer.current = setTimeout(() => setStep((s) => Math.min(s + 1, lastIndex + 1)), 240);
+    },
+    [],
+  );
+
+  async function onSubmit() {
     setError(null);
     setBusy(true);
     try {
       if (consent) await giveConsent();
-      const payload = questions.map((q) => ({
-        question_id: q.question_id,
-        value: answers[q.question_id],
-      }));
+      const payload = questions.map((q) => ({ question_id: q.question_id, value: answers[q.question_id] }));
       const res = await submitQuestionnaire(payload, level);
+      try {
+        localStorage.removeItem(storageKey(level));
+      } catch {
+        /* ignore */
+      }
       setResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка отправки");
@@ -85,88 +120,81 @@ export default function QuestionnairePage() {
   }
 
   if (loading) {
-    return <main className="mx-auto max-w-3xl px-6 py-16 text-sm opacity-60">Загрузка…</main>;
+    return <main className="mx-auto max-w-3xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
   }
 
+  // ---- Result ----
   if (result) {
     const interp = result.interpretation;
     return (
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="text-2xl font-semibold">Результат</h1>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-faint">
+          Результат
+        </div>
+        <h1 className="mt-1 text-3xl font-semibold text-ink">Сигнал среды</h1>
 
-        {/* Numeric block (preserved) */}
-        <div className="mt-6 rounded-xl border border-white/10 bg-white/5 p-6">
-          <div className="text-sm opacity-70">Давление среды на человека</div>
-          <div className="mt-1 text-4xl font-semibold">
+        <Card className="mt-6">
+          <div className="text-sm text-ink-muted">Давление среды на человека</div>
+          <div className="mt-1 text-5xl font-semibold tabular-nums text-ink">
             {result.burnout_pressure_score.toFixed(2)}
           </div>
-          <div className={`mt-2 text-lg font-medium ${RISK_CLASS[result.risk_level]}`}>
+          <div className={`mt-2 text-lg font-medium ${RISK_TEXT[result.risk_level]}`}>
             {RISK_LABEL[result.risk_level]}
           </div>
-        </div>
+          <div className="mt-1 text-xs text-ink-faint">по шкале 1–5 · сигнал, не диагноз</div>
+        </Card>
 
-        {/* Краткая интерпретация */}
         <section className="mt-8">
-          <h2 className="text-lg font-medium">Краткая интерпретация</h2>
-          <p className="mt-2 text-sm leading-relaxed opacity-90">{interp.summary}</p>
+          <SectionHeader eyebrow="Интерпретация" title="Кратко" />
+          <p className="text-sm leading-relaxed text-ink">{interp.summary}</p>
         </section>
 
-        {/* Что создаёт давление (доминирующие факторы) */}
         <section className="mt-8">
-          <h2 className="text-lg font-medium">Что создаёт давление</h2>
-          <div className="mt-3 space-y-2">
+          <SectionHeader title="Что создаёт давление" />
+          <div className="space-y-2">
             {interp.dominant_factors.map((f) => (
-              <div
-                key={f.key}
-                className="rounded-lg border border-white/10 bg-white/5 px-4 py-3"
-              >
+              <Card key={f.key} variant="inset" className="px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-medium">
+                  <div className="text-sm font-medium text-ink">
                     {f.title}
                     {f.subdimension && (
-                      <span className="ml-2 text-xs font-normal opacity-50">· {f.subdimension}</span>
+                      <span className="ml-2 text-xs font-normal text-ink-faint">· {f.subdimension}</span>
                     )}
                   </div>
-                  <div className="text-lg font-semibold tabular-nums">{f.score.toFixed(2)}</div>
+                  <div className="text-lg font-semibold tabular-nums text-ink">{f.score.toFixed(2)}</div>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed opacity-60">{f.explanation}</p>
-              </div>
+                <p className="mt-1 text-xs leading-relaxed text-ink-muted">{f.explanation}</p>
+              </Card>
             ))}
           </div>
         </section>
 
-        {/* Что это может означать */}
         <section className="mt-8">
-          <h2 className="text-lg font-medium">Что это может означать</h2>
-          <p className="mt-2 text-sm leading-relaxed opacity-90">{interp.possible_meaning}</p>
+          <SectionHeader title="Что это может означать" />
+          <p className="text-sm leading-relaxed text-ink">{interp.possible_meaning}</p>
         </section>
 
-        {/* Что проверить дальше */}
         <section className="mt-8">
-          <h2 className="text-lg font-medium">Что проверить дальше</h2>
-          <ul className="mt-3 space-y-2">
+          <SectionHeader title="Что проверить дальше" />
+          <ul className="space-y-2">
             {interp.check_next.map((item, i) => (
-              <li
-                key={i}
-                className="flex gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm leading-relaxed"
-              >
-                <span className="opacity-40">{i + 1}.</span>
-                <span className="opacity-90">{item}</span>
-              </li>
+              <Card key={i} variant="inset" className="flex gap-2 px-4 py-3 text-sm leading-relaxed">
+                <span className="text-ink-faint">{i + 1}.</span>
+                <span className="text-ink">{item}</span>
+              </Card>
             ))}
           </ul>
         </section>
 
-        {/* Вопросы для углублённого разбора (follow-ups) */}
         {interp.follow_ups && interp.follow_ups.length > 0 && (
-          <details className="mt-8 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
-            <summary className="cursor-pointer select-none text-sm font-medium opacity-90">
+          <details className="mt-8">
+            <summary className="cursor-pointer select-none text-sm font-medium text-ink">
               Вопросы для углублённого разбора
             </summary>
-            <ul className="mt-3 space-y-1.5 text-sm leading-relaxed opacity-80">
+            <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-ink-muted">
               {interp.follow_ups.map((q, i) => (
                 <li key={i} className="flex gap-2">
-                  <span className="opacity-40">—</span>
+                  <span className="text-ink-faint">—</span>
                   <span>{q}</span>
                 </li>
               ))}
@@ -174,53 +202,43 @@ export default function QuestionnairePage() {
           </details>
         )}
 
-        {/* Как считался результат (раскрытие + полный разбор по компонентам) */}
-        <details className="mt-8 rounded-xl border border-white/10 bg-white/5 px-5 py-4">
-          <summary className="cursor-pointer select-none text-sm font-medium opacity-90">
+        <details className="mt-6">
+          <summary className="cursor-pointer select-none text-sm font-medium text-ink">
             Как считался результат
           </summary>
-          <div className="mt-4 space-y-3 text-xs leading-relaxed opacity-70">
+          <div className="mt-4 space-y-3 text-xs leading-relaxed text-ink-muted">
             <p>
-              Итоговый балл — это взвешенная сумма средних по пяти компонентам среды (шкала
-              1–5). Веса отражают вклад каждого компонента в общее давление.
+              Итоговый балл — взвешенная сумма средних по пяти компонентам среды (шкала 1–5). Веса
+              отражают вклад каждого компонента в общее давление.
             </p>
             <p>
-              Часть вопросов сформулирована «в позитивную сторону» (например, про
-              восстановление и устойчивый ритм): для них шкала инвертируется (6 − ответ), чтобы
-              у всех компонентов более высокое значение означало большее давление среды.
+              Часть вопросов сформулирована «в позитивную сторону» (восстановление, устойчивый ритм):
+              для них шкала инвертируется (6 − ответ), чтобы более высокое значение всегда означало
+              большее давление среды.
             </p>
-            <div className="mt-2 space-y-2">
+            <div className="space-y-2">
               {result.components.map((c) => (
                 <div
                   key={c.component}
-                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-2"
+                  className="flex items-center justify-between rounded-control border border-edge-2 bg-surface-2 px-4 py-2"
                 >
                   <div>
-                    <div className="text-sm font-medium opacity-90">{c.label}</div>
-                    <div className="text-[11px] opacity-50">вес {(c.weight * 100).toFixed(0)}%</div>
+                    <div className="text-sm font-medium text-ink">{c.label}</div>
+                    <div className="text-[11px] text-ink-faint">вес {(c.weight * 100).toFixed(0)}%</div>
                   </div>
-                  <div className="text-base font-semibold tabular-nums opacity-90">
-                    {c.score.toFixed(2)}
-                  </div>
+                  <div className="text-base font-semibold tabular-nums text-ink">{c.score.toFixed(2)}</div>
                 </div>
               ))}
             </div>
-            <p>
-              Результат — это <strong>сигнал среды для проверки человеком</strong>, а не
-              кадровое решение и не оценка личности.
-            </p>
           </div>
         </details>
 
-        {/* Постоянный этический дисклеймер */}
-        <p className="mt-8 rounded-lg border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs leading-relaxed opacity-70">
-          {interp.disclaimer}
-        </p>
+        <Disclaimer className="mt-8">{interp.disclaimer || RESULT_DISCLAIMER}</Disclaimer>
 
         <div className="mt-6">
           <button
             onClick={() => router.push("/")}
-            className="text-sm opacity-60 underline-offset-4 hover:underline"
+            className="text-sm text-ink-muted underline-offset-4 hover:underline"
           >
             ← На главную
           </button>
@@ -229,102 +247,151 @@ export default function QuestionnairePage() {
     );
   }
 
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-semibold">Опросник среды</h1>
-      <p className="mt-2 text-sm opacity-70">
-        Оцените каждое утверждение по шкале согласия от 1 до 5.
-      </p>
+  // ---- Intro: choose session length ----
+  if (!started) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-faint">
+          Опросник среды
+        </div>
+        <h1 className="mt-1 text-3xl font-semibold text-ink">Оценка давления среды</h1>
+        <p className="mt-2 text-sm text-ink-muted">
+          Несколько утверждений по шкале согласия 1–5. Ответы можно прервать и продолжить позже —
+          они сохраняются на этом устройстве.
+        </p>
 
-      {/* Session level selector */}
-      <div className="mt-5 flex flex-wrap gap-2">
-        {LEVELS.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            onClick={() => setLevel(l.id)}
-            disabled={busy}
-            className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-              level === l.id
-                ? "border-white/60 bg-white/15"
-                : "border-white/10 bg-white/5 hover:border-white/30"
-            }`}
-          >
-            <div className="font-medium">{l.label}</div>
-            <div className="text-xs opacity-50">{l.hint}</div>
-          </button>
-        ))}
-      </div>
-
-      {scale.length === 5 && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs opacity-50">
-          {scale.map((s) => (
-            <span key={s.value}>
-              <span className="font-medium opacity-80">{s.value}</span> — {s.label}
-            </span>
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {LEVELS.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => setLevel(l.id)}
+              className={`rounded-card border p-4 text-left transition-colors ${
+                level === l.id ? "border-accent bg-surface" : "border-edge bg-surface-2 hover:border-white/30"
+              }`}
+            >
+              <div className="font-medium text-ink">{l.label}</div>
+              <div className="mt-0.5 text-xs text-ink-muted">{l.hint}</div>
+            </button>
           ))}
         </div>
-      )}
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5">
-        {questions.map((q, i) => (
-          <fieldset key={q.question_id} className="rounded-xl border border-white/10 bg-white/5 p-5">
-            <legend className="sr-only">
-              {i + 1}. {q.text}
-            </legend>
-            <p className="text-sm leading-relaxed">
-              <span className="mr-1 opacity-50">{i + 1}.</span>
-              {q.text}
+        {scale.length === 5 && (
+          <div className="mt-4 text-xs text-ink-muted">
+            <span className="font-medium text-ink">1</span> — {scale[0].label} ·{" "}
+            <span className="font-medium text-ink">5</span> — {scale[4].label}
+          </div>
+        )}
+
+        <div className="mt-6">
+          <Button onClick={() => setStarted(true)}>
+            {answeredCount > 0 ? `Продолжить (${answeredCount}/${total})` : "Начать опрос"}
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  // ---- Consent / submit step ----
+  if (step >= total) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <ProgressBar value={1} />
+        <div className="mt-6">
+          <SectionHeader eyebrow={`Готово · ${answeredCount}/${total}`} title="Согласие и отправка" />
+          <Card>
+            <p className="text-sm leading-relaxed text-ink">
+              Данные среды собираются только с вашего явного согласия. Это сигнальный слой для
+              проверки человеком, а не оценка личности или основание для кадрового решения.
             </p>
-            <div className="mt-1 text-xs opacity-40">{q.component_name} · {q.subdimension}</div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {SCALE.map((v) => (
-                <label
-                  key={v}
-                  title={scale.find((s) => s.value === v)?.label ?? ""}
-                  className={`flex h-10 w-10 cursor-pointer select-none items-center justify-center rounded-lg border text-sm transition-colors ${
-                    answers[q.question_id] === v
-                      ? "border-white/60 bg-white/20"
-                      : "border-white/10 bg-white/5 hover:border-white/30"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`q-${q.question_id}`}
-                    value={v}
-                    checked={answers[q.question_id] === v}
-                    onChange={() => setAnswers((a) => ({ ...a, [q.question_id]: v }))}
-                    className="sr-only"
-                  />
-                  {v}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        ))}
+            <label className="mt-4 flex items-start gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                className="mt-1"
+              />
+              <span>Я даю явное согласие на сбор и обработку этих операционных данных.</span>
+            </label>
+            {!allAnswered && (
+              <p className="mt-3 text-xs text-amber-400">
+                Отвечено {answeredCount} из {total}. Вернитесь и завершите оставшиеся вопросы.
+              </p>
+            )}
+            {error && <p className="mt-3 text-sm text-orange-400">{error}</p>}
+          </Card>
 
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            className="mt-1"
-          />
-          <span className="opacity-80">
-            Я даю явное согласие на сбор и обработку этих операционных данных.
-          </span>
-        </label>
+          <div className="mt-4 flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setStep(total - 1)} disabled={busy}>
+              ← Назад
+            </Button>
+            <Button onClick={onSubmit} disabled={busy || !allAnswered || !consent}>
+              {busy ? "Отправка…" : "Отправить"}
+            </Button>
+          </div>
+        </div>
+        <Disclaimer className="mt-8">{RESULT_DISCLAIMER}</Disclaimer>
+      </main>
+    );
+  }
 
-        {error && <p className="text-sm text-orange-400">{error}</p>}
+  // ---- One question at a time ----
+  const q = questions[step];
+  const selected = answers[q.question_id];
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-12">
+      <ProgressBar value={total > 0 ? answeredCount / total : 0} />
+      <div className="mt-3 flex items-center justify-between text-xs text-ink-muted">
+        <span>
+          Вопрос {step + 1} из {total}
+        </span>
+        <span className="text-ink-faint">{LEVELS.find((l) => l.id === level)?.label}</span>
+      </div>
 
-        <button
-          type="submit"
-          disabled={busy || !allAnswered || !consent}
-          className="rounded-lg bg-white/90 px-5 py-2 text-sm font-medium text-black disabled:opacity-40"
+      <Card className="mt-5">
+        <div className="text-[11px] uppercase tracking-[0.09em] text-ink-faint">
+          {q.component_name}
+          {q.subdimension && <span className="text-ink-faint"> · {q.subdimension}</span>}
+        </div>
+        <p className="mt-2 text-lg leading-relaxed text-ink">{q.text}</p>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {SCALE.map((v) => (
+            <button
+              key={v}
+              type="button"
+              title={scale.find((s) => s.value === v)?.label ?? ""}
+              onClick={() => selectAnswer(q.question_id, v, total - 1)}
+              className={`flex h-12 w-12 items-center justify-center rounded-control border text-base transition-colors ${
+                selected === v
+                  ? "border-accent bg-accent/20 text-ink"
+                  : "border-edge bg-surface-2 text-ink-muted hover:border-white/30"
+              }`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        {scale.length === 5 && (
+          <div className="mt-2 flex justify-between text-xs text-ink-faint">
+            <span>{scale[0].label}</span>
+            <span>{scale[4].label}</span>
+          </div>
+        )}
+      </Card>
+
+      <div className="mt-4 flex items-center justify-between">
+        <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+          ← Назад
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => setStep((s) => Math.min(total, s + 1))}
+          disabled={!selected}
         >
-          {busy ? "Отправка…" : "Отправить"}
-        </button>
-      </form>
+          {step === total - 1 ? "К согласию →" : "Далее →"}
+        </Button>
+      </div>
     </main>
   );
 }
