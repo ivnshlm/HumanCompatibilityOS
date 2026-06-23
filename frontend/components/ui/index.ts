@@ -7,3 +7,9 @@ export { RiskBadge } from "./RiskBadge";
 export { Disclaimer } from "./Disclaimer";
 export { EmptyState } from "./EmptyState";
 export { SectionHeader } from "./SectionHeader";
+// Composites (P1b)
+export { StatCard } from "./StatCard";
+export { DistributionBar } from "./DistributionBar";
+export { Sparkline } from "./Sparkline";
+export { Table, THead, TH, TR, TD } from "./Table";
+export { AnonymizedNotice } from "./AnonymizedNotice";
