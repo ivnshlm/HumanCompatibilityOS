@@ -10,54 +10,30 @@ import {
   fetchPilotMetric,
   fetchTeamDashboard,
   getToken,
-  type BlockAggregate,
   type EnvironmentMetrics,
   type Me,
   type OnboardingHealth,
   type PilotMetric,
-  type RiskLevel,
   type TeamDashboard,
 } from "@/lib/api";
-import { RISK_DOT, RISK_LABEL, RISK_TEXT } from "@/lib/risk";
+import { NO_DECISION_DISCLAIMER } from "@/lib/risk";
+import {
+  AnonymizedNotice,
+  Card,
+  DistributionBar,
+  Disclaimer,
+  EmptyState,
+  RiskBadge,
+  SectionHeader,
+  StatCard,
+  Table,
+  TD,
+  TH,
+  THead,
+  TR,
+} from "@/components/ui";
 
 const REVIEWER_ROLES = new Set(["hr", "team_lead", "admin", "ethics_reviewer"]);
-
-function BlockCard({ block }: { block: BlockAggregate }) {
-  const total =
-    block.distribution.low + block.distribution.medium + block.distribution.high;
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-lg font-medium">{block.label}</div>
-          <div className="text-xs uppercase tracking-wide opacity-50">{block.label_en}</div>
-        </div>
-        <span className={`mt-1 inline-flex items-center gap-2 text-sm font-medium ${RISK_TEXT[block.risk_level]}`}>
-          <span className={`h-2.5 w-2.5 rounded-full ${RISK_DOT[block.risk_level]}`} />
-          {RISK_LABEL[block.risk_level]}
-        </span>
-      </div>
-
-      <div className="mt-4 text-4xl font-semibold">{block.score.toFixed(2)}</div>
-      <div className="text-xs opacity-50">по шкале 1–5 (выше — больше риска)</div>
-
-      {total > 0 && (
-        <div className="mt-4">
-          <div className="flex h-2 overflow-hidden rounded-full bg-white/10">
-            <div className="bg-emerald-400/80" style={{ width: `${(block.distribution.low / total) * 100}%` }} />
-            <div className="bg-amber-400/80" style={{ width: `${(block.distribution.medium / total) * 100}%` }} />
-            <div className="bg-orange-400/80" style={{ width: `${(block.distribution.high / total) * 100}%` }} />
-          </div>
-          <div className="mt-2 flex gap-4 text-xs opacity-60">
-            <span>низкий {block.distribution.low}</span>
-            <span>средний {block.distribution.medium}</span>
-            <span>высокий {block.distribution.high}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -98,175 +74,208 @@ export default function DashboardPage() {
   }, [router]);
 
   if (loading) {
-    return <main className="mx-auto max-w-5xl px-6 py-16 text-sm opacity-60">Загрузка…</main>;
+    return <main className="mx-auto max-w-6xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
   }
 
+  const notReviewer = me && !REVIEWER_ROLES.has(me.role);
+  const noTeam = me && REVIEWER_ROLES.has(me.role) && !me.team_id;
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-6xl px-6 py-12">
       <header className="mb-8">
-        <h1 className="text-3xl font-semibold">Дашборд среды</h1>
-        <p className="mt-2 text-sm opacity-70">
-          Агрегаты по команде. Среда важнее героизма.
-        </p>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-faint">
+          Среда команды
+        </div>
+        <h1 className="mt-1 text-3xl font-semibold text-ink">Дашборд среды</h1>
+        <p className="mt-2 text-sm text-ink-muted">Агрегаты по команде. Среда важнее героизма.</p>
       </header>
 
-      {error && <p className="text-sm text-orange-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
 
-      {me && !REVIEWER_ROLES.has(me.role) && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm opacity-80">
-          Дашборд доступен только ролям HR, руководитель команды, администратор и этический ревьюер.
-        </div>
+      {notReviewer && (
+        <EmptyState
+          title="Доступ только для проверяющих ролей"
+          text="Дашборд доступен ролям HR, руководитель команды, администратор и этический ревьюер."
+        />
       )}
 
-      {me && REVIEWER_ROLES.has(me.role) && !me.team_id && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm opacity-80">
-          К вашему профилю не привязана команда (team_id). Привяжите команду, чтобы видеть агрегаты.
-        </div>
+      {noTeam && (
+        <EmptyState
+          title="Команда не привязана"
+          text="К вашему профилю не привязана команда (team_id). Привяжите команду, чтобы видеть агрегаты."
+        />
       )}
 
       {dashboard && !dashboard.sufficient_data && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-6 text-sm opacity-90">
-          {dashboard.notice ??
-            "Недостаточно данных для командного вывода. Чтобы защитить участников от деанонимизации, командная аналитика доступна только при выборке от 3 человек."}
-          <div className="mt-1 text-xs opacity-60">
-            Участников с данными: {dashboard.cohort_size}
-          </div>
-        </div>
+        <AnonymizedNotice cohortSize={dashboard.cohort_size} />
       )}
 
       {dashboard && dashboard.sufficient_data && (
         <>
-          <div className="mb-4 text-xs opacity-60">
-            Участников в выборке: {dashboard.cohort_size}
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
+            <span>Участников в выборке: {dashboard.cohort_size}</span>
+            {dashboard.interpretation && (
+              <>
+                <span className="text-ink-faint">·</span>
+                <span>{dashboard.interpretation}</span>
+              </>
+            )}
           </div>
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {dashboard.blocks.map((b) => (
-              <BlockCard key={b.block} block={b} />
+              <StatCard
+                key={b.block}
+                eyebrow={b.label_en}
+                title={b.label}
+                value={b.score.toFixed(2)}
+                caption="по шкале 1–5 (выше — больше риска)"
+                badge={<RiskBadge level={b.risk_level} />}
+                footer={<DistributionBar distribution={b.distribution} />}
+              />
             ))}
           </section>
         </>
       )}
 
       {pilot && pilot.sufficient_data && pilot.headline && (
-        <section className="mt-10 rounded-xl border border-white/10 bg-white/5 p-5">
-          <h2 className="text-lg font-medium">Пилотная метрика — изменение за 90 дней</h2>
-          <p className="mt-1 text-xs opacity-50">
-            Базовая точка → 90 дней. Снижение = улучшение среды.
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-end gap-6">
-            <div>
-              <div className="text-xs opacity-50">{pilot.headline.label} (цель {pilot.target_pct}%)</div>
-              <div
-                className={`text-3xl font-semibold ${
-                  pilot.target_met ? "text-emerald-400" : "text-amber-400"
-                }`}
-              >
-                {pilot.headline.pct_change > 0 ? "+" : ""}
-                {pilot.headline.pct_change}%
-              </div>
-            </div>
-            <div className="text-sm opacity-70">
-              {pilot.headline.baseline_mean.toFixed(2)} → {pilot.headline.latest_mean.toFixed(2)}
-            </div>
-            <div className="text-sm">
-              Цель:{" "}
-              <span className={pilot.target_met ? "text-emerald-400" : "text-amber-400"}>
-                {pilot.target_met ? "достигнута" : "не достигнута"}
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Пилот"
+            title="Изменение за 90 дней"
+            right={
+              <span className="text-xs text-ink-muted">
+                Базовая точка → 90 дней · снижение = улучшение
               </span>
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {pilot.blocks.map((b) => (
-              <div
-                key={b.key}
-                className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm"
-              >
-                <span className="opacity-80">{b.label}</span>
-                <span className="flex items-center gap-2">
-                  <span className="opacity-50">
-                    {b.baseline_mean.toFixed(2)} → {b.latest_mean.toFixed(2)}
-                  </span>
-                  <span className={b.improved ? "text-emerald-400" : "text-amber-400"}>
-                    {b.pct_change > 0 ? "+" : ""}
-                    {b.pct_change}%
-                  </span>
+            }
+          />
+          <Card>
+            <div className="flex flex-wrap items-end gap-6">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.09em] text-ink-faint">
+                  {pilot.headline.label} (цель {pilot.target_pct}%)
+                </div>
+                <div
+                  className={`text-4xl font-semibold tabular-nums ${
+                    pilot.target_met ? "text-emerald-400" : "text-amber-400"
+                  }`}
+                >
+                  {pilot.headline.pct_change > 0 ? "+" : ""}
+                  {pilot.headline.pct_change}%
+                </div>
+              </div>
+              <div className="text-sm tabular-nums text-ink-muted">
+                {pilot.headline.baseline_mean.toFixed(2)} → {pilot.headline.latest_mean.toFixed(2)}
+              </div>
+              <div className="text-sm text-ink-muted">
+                Цель:{" "}
+                <span className={pilot.target_met ? "text-emerald-400" : "text-amber-400"}>
+                  {pilot.target_met ? "достигнута" : "не достигнута"}
                 </span>
               </div>
-            ))}
-          </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {pilot.blocks.map((b) => (
+                <div
+                  key={b.key}
+                  className="flex items-center justify-between rounded-control border border-edge-2 bg-surface-2 px-3 py-2 text-sm"
+                >
+                  <span className="text-ink">{b.label}</span>
+                  <span className="flex items-center gap-2 tabular-nums">
+                    <span className="text-ink-faint">
+                      {b.baseline_mean.toFixed(2)} → {b.latest_mean.toFixed(2)}
+                    </span>
+                    <span className={b.improved ? "text-emerald-400" : "text-amber-400"}>
+                      {b.pct_change > 0 ? "+" : ""}
+                      {b.pct_change}%
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
         </section>
       )}
 
       {onboarding && onboarding.sufficient_data && (
-        <section className="mt-10 rounded-xl border border-white/10 bg-white/5 p-5">
-          <h2 className="text-lg font-medium">Онбординг — адаптация новых сотрудников</h2>
-          <p className="mt-1 text-xs opacity-50">
-            Новички (в команде &lt; {onboarding.window_days} дней) против устоявшейся команды.
-          </p>
-          <div className="mt-4 flex flex-wrap items-end gap-6">
-            <div>
-              <div className="text-xs opacity-50">давление у новичков</div>
-              <div className="text-3xl font-semibold">
-                {onboarding.new_hire_mean?.toFixed(2) ?? "—"}
+        <section className="mt-10">
+          <SectionHeader
+            eyebrow="Онбординг"
+            title="Адаптация новых сотрудников"
+            right={
+              <span className="text-xs text-ink-muted">
+                Новички (&lt; {onboarding.window_days} дней) vs устоявшаяся команда
+              </span>
+            }
+          />
+          <Card>
+            <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.09em] text-ink-faint">
+                  давление у новичков
+                </div>
+                <div className="text-4xl font-semibold tabular-nums text-ink">
+                  {onboarding.new_hire_mean?.toFixed(2) ?? "—"}
+                </div>
               </div>
-            </div>
-            <div className="text-sm opacity-70">
-              устоявшаяся команда:{" "}
-              {onboarding.tenured_mean !== null ? onboarding.tenured_mean.toFixed(2) : "нет данных"}
-            </div>
-            {onboarding.integration_friction !== null && (
-              <div className="text-sm">
-                трение интеграции:{" "}
-                <span className={onboarding.friction_flag ? "text-orange-400" : "text-emerald-400"}>
-                  {onboarding.integration_friction > 0 ? "+" : ""}
-                  {onboarding.integration_friction.toFixed(2)}
-                  {onboarding.friction_flag ? " (внимание)" : " (норма)"}
+              <div className="text-sm text-ink-muted">
+                устоявшаяся команда:{" "}
+                <span className="tabular-nums text-ink">
+                  {onboarding.tenured_mean !== null ? onboarding.tenured_mean.toFixed(2) : "нет данных"}
                 </span>
               </div>
-            )}
-            <div className="text-sm opacity-70">
-              новичков в высоком риске: <span className="font-medium">{onboarding.at_risk_count}</span>
+              {onboarding.integration_friction !== null && (
+                <div className="text-sm text-ink-muted">
+                  трение интеграции:{" "}
+                  <span
+                    className={`tabular-nums ${
+                      onboarding.friction_flag ? "text-orange-400" : "text-emerald-400"
+                    }`}
+                  >
+                    {onboarding.integration_friction > 0 ? "+" : ""}
+                    {onboarding.integration_friction.toFixed(2)}
+                    {onboarding.friction_flag ? " (внимание)" : " (норма)"}
+                  </span>
+                </div>
+              )}
+              <div className="text-sm text-ink-muted">
+                новичков в высоком риске:{" "}
+                <span className="font-medium text-ink">{onboarding.at_risk_count}</span>
+              </div>
             </div>
-          </div>
+          </Card>
         </section>
       )}
 
       {metrics && metrics.aggregates.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-medium">Метрики среды</h2>
-          <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 text-left text-xs uppercase tracking-wide opacity-60">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Метрика</th>
-                  <th className="px-4 py-2 font-medium">N</th>
-                  <th className="px-4 py-2 font-medium">Среднее</th>
-                  <th className="px-4 py-2 font-medium">Мин</th>
-                  <th className="px-4 py-2 font-medium">Макс</th>
-                </tr>
-              </thead>
-              <tbody>
-                {metrics.aggregates.map((m) => (
-                  <tr key={m.metric_type} className="border-t border-white/10">
-                    <td className="px-4 py-2">{m.metric_type}</td>
-                    <td className="px-4 py-2">{m.count}</td>
-                    <td className="px-4 py-2">{m.mean.toFixed(2)}</td>
-                    <td className="px-4 py-2">{m.minimum.toFixed(2)}</td>
-                    <td className="px-4 py-2">{m.maximum.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SectionHeader eyebrow="Телеметрия" title="Метрики среды" />
+          <Table>
+            <THead>
+              <tr>
+                <TH>Метрика</TH>
+                <TH>N</TH>
+                <TH>Среднее</TH>
+                <TH>Мин</TH>
+                <TH>Макс</TH>
+              </tr>
+            </THead>
+            <tbody>
+              {metrics.aggregates.map((m) => (
+                <TR key={m.metric_type}>
+                  <TD className="text-ink">{m.metric_type}</TD>
+                  <TD className="tabular-nums">{m.count}</TD>
+                  <TD className="tabular-nums">{m.mean.toFixed(2)}</TD>
+                  <TD className="tabular-nums">{m.minimum.toFixed(2)}</TD>
+                  <TD className="tabular-nums">{m.maximum.toFixed(2)}</TD>
+                </TR>
+              ))}
+            </tbody>
+          </Table>
         </section>
       )}
 
-      <p className="mt-10 text-xs opacity-50">
-        Светофор-индикаторы не являются основанием для кадровых решений. Все выводы требуют
-        проверки человеком. Данные показываются только при достаточном размере выборки.
-      </p>
+      <Disclaimer className="mt-10">{NO_DECISION_DISCLAIMER}</Disclaimer>
     </main>
   );
 }
