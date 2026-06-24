@@ -13,7 +13,7 @@ import {
   type AdminUserPatch,
   type Me,
 } from "@/lib/api";
-import { Button, Card, EmptyState, Input, Select } from "@/components/ui";
+import { Button, Card, EmptyState, Input, PageSkeleton, Select } from "@/components/ui";
 
 // 3 primary roles + 2 advanced (kept for oversight/team scoping).
 const ROLES: { value: Me["role"]; label: string }[] = [
@@ -104,7 +104,7 @@ export default function AdminPage() {
   }
 
   if (allowed === null) {
-    return <main className="mx-auto max-w-4xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="4xl" />;
   }
 
   return (

@@ -23,6 +23,7 @@ import {
   DistributionBar,
   Disclaimer,
   EmptyState,
+  PageSkeleton,
   RiskBadge,
   SectionHeader,
   StatCard,
@@ -74,7 +75,7 @@ export default function DashboardPage() {
   }, [router]);
 
   if (loading) {
-    return <main className="mx-auto max-w-6xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="6xl" />;
   }
 
   const notReviewer = me && !REVIEWER_ROLES.has(me.role);

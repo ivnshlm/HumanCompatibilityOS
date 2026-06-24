@@ -18,6 +18,7 @@ import {
   Disclaimer,
   EmptyState,
   Field,
+  PageSkeleton,
   SectionHeader,
   Select,
   Sparkline,
@@ -96,7 +97,7 @@ export default function RecalibrationPage() {
   }
 
   if (loading) {
-    return <main className="mx-auto max-w-3xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="3xl" />;
   }
 
   const trendPoints =

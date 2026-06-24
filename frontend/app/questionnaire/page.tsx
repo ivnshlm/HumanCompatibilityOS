@@ -13,7 +13,7 @@ import {
   type ScaleOption,
 } from "@/lib/api";
 import { RESULT_DISCLAIMER, RISK_TEXT } from "@/lib/risk";
-import { Button, Card, Disclaimer, ProgressBar, SectionHeader } from "@/components/ui";
+import { Button, Card, Disclaimer, PageSkeleton, ProgressBar, SectionHeader } from "@/components/ui";
 
 const SCALE = [1, 2, 3, 4, 5];
 
@@ -120,7 +120,7 @@ export default function QuestionnairePage() {
   }
 
   if (loading) {
-    return <main className="mx-auto max-w-3xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="3xl" />;
   }
 
   // ---- Result ----

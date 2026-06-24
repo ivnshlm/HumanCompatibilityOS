@@ -26,7 +26,9 @@ import {
   EmptyState,
   Field,
   Input,
+  PageSkeleton,
   RiskBadge,
+  Skeleton,
   SectionHeader,
   Select,
   Textarea,
@@ -223,7 +225,7 @@ export default function ReviewPage() {
   }
 
   if (allowed === null) {
-    return <main className="mx-auto max-w-3xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="3xl" />;
   }
 
   return (
@@ -305,7 +307,9 @@ export default function ReviewPage() {
                           (details[h.id] ? (
                             <InterpretationView result={details[h.id]} />
                           ) : (
-                            <div className="px-4 pb-3 text-xs text-ink-faint">Загрузка…</div>
+                            <div className="px-4 pb-3">
+                              <Skeleton className="h-3 w-40" />
+                            </div>
                           ))}
                       </Card>
                     ))}
