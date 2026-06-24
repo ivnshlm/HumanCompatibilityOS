@@ -18,6 +18,17 @@ import {
   type OverallRisk,
   type RiskLevel,
 } from "@/lib/api";
+import {
+  Button,
+  Card,
+  Disclaimer,
+  EmptyState,
+  Field,
+  Input,
+  SectionHeader,
+  Select,
+  Textarea,
+} from "@/components/ui";
 
 const REVIEWER_ROLES = new Set(["hr", "team_lead", "admin", "ethics_reviewer"]);
 const RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
@@ -139,259 +150,256 @@ export default function HiringPage() {
   }
 
   if (allowed === null) {
-    return <main className="mx-auto max-w-6xl px-6 py-16 text-sm opacity-60">Загрузка…</main>;
-  }
-  if (!allowed) {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-16">
-        <h1 className="text-2xl font-semibold">Подбор и совместимость</h1>
-        <p className="mt-4 rounded-xl border border-white/10 bg-white/5 p-6 text-sm opacity-80">
-          Раздел доступен ролям HR, руководитель команды, администратор, этический ревьюер.
-        </p>
-      </main>
-    );
+    return <main className="mx-auto max-w-6xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
   }
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold">Подбор и совместимость</h1>
-        <p className="mt-2 text-sm opacity-70">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-faint">
+          Совместимость со средой
+        </div>
+        <h1 className="mt-1 text-3xl font-semibold text-ink">Подбор и совместимость</h1>
+        <p className="mt-2 text-sm text-ink-muted">
           Калибровка совместимости со средой (HR Workbook v6), не оценка ценности человека.
         </p>
       </header>
 
-      {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
+      {!allowed ? (
+        <EmptyState
+          title="Доступ только для проверяющих ролей"
+          text="Раздел доступен ролям HR, руководитель команды, администратор, этический ревьюер."
+        />
+      ) : (
+        <>
+          {error && <p className="mb-4 text-sm text-orange-400">{error}</p>}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
-        {/* Candidate list + add */}
-        <aside className="space-y-4">
-          <form onSubmit={onAddCandidate} className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="text-sm font-medium">Новый кандидат</div>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Имя"
-              className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40 focus:border-white/30"
-            />
-            <input
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
-              placeholder="Роль (необязательно)"
-              className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40 focus:border-white/30"
-            />
-            <button className="mt-3 w-full rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-black">
-              Добавить
-            </button>
-          </form>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[280px_1fr]">
+            {/* Candidate list + add */}
+            <aside className="space-y-4">
+              <Card>
+                <div className="text-sm font-medium text-ink">Новый кандидат</div>
+                <form onSubmit={onAddCandidate} className="mt-2 space-y-2">
+                  <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Имя" />
+                  <Input
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    placeholder="Роль (необязательно)"
+                  />
+                  <Button type="submit" className="w-full">
+                    Добавить
+                  </Button>
+                </form>
+              </Card>
 
-          <div className="space-y-1">
-            {candidates.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => openCandidate(c.id)}
-                className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
-                  detail?.candidate.id === c.id
-                    ? "border-white/40 bg-white/10"
-                    : "border-white/10 bg-white/5 hover:border-white/25"
-                }`}
-              >
-                <div className="font-medium">{c.full_name}</div>
-                {c.role && <div className="text-xs opacity-50">{c.role}</div>}
-              </button>
-            ))}
-            {candidates.length === 0 && <p className="text-sm opacity-60">Кандидатов пока нет.</p>}
-          </div>
-        </aside>
-
-        {/* Detail */}
-        <section>
-          {!detail ? (
-            <p className="text-sm opacity-60">Выберите или добавьте кандидата.</p>
-          ) : (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-xl font-semibold">{detail.candidate.full_name}</h2>
-                {detail.candidate.role && (
-                  <div className="text-sm opacity-60">{detail.candidate.role}</div>
-                )}
-              </div>
-
-              {/* Past assessments */}
-              <div>
-                <h3 className="text-lg font-medium">Оценки</h3>
-                {detail.assessments.length > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    {detail.assessments.map((a) => (
-                      <div key={a.id} className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">
-                            {a.type === "quick_screen" ? "Quick Screen" : "Full Calibration"}
-                          </span>
-                          <span className="flex items-center gap-3 text-xs opacity-70">
-                            {a.overall_risk && (
-                              <span className="flex items-center gap-1.5">
-                                <span className={`h-2 w-2 rounded-full ${OVERALL_DOT[a.overall_risk]}`} />
-                                {a.overall_risk}
-                              </span>
-                            )}
-                            {a.suggested_overall_risk && (
-                              <span className="opacity-60">подсказка: {a.suggested_overall_risk}</span>
-                            )}
-                            <span>{a.reviewer_name}</span>
-                          </span>
-                        </div>
-                        {a.recommendation && <div className="mt-1 text-sm">{a.recommendation}</div>}
-                        {a.signals && (
-                          <div className="mt-2 flex flex-wrap gap-1 text-xs opacity-70">
-                            {Object.entries(a.signals).map(([k, v]) => (
-                              <span key={k} className="rounded border border-white/10 px-1.5 py-0.5">
-                                {k}: {RISK_RU[v]}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm opacity-60">Оценок ещё нет.</p>
-                )}
-              </div>
-
-              {/* New assessment */}
-              <form onSubmit={onSaveAssessment} className="rounded-xl border border-white/10 bg-white/5 p-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">Новая оценка</h3>
-                  <select
-                    value={assType}
-                    onChange={(e) => setAssType(e.target.value as typeof assType)}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none"
+              <div className="space-y-1">
+                {candidates.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => openCandidate(c.id)}
+                    className={`w-full rounded-control border px-3 py-2 text-left text-sm transition-colors ${
+                      detail?.candidate.id === c.id
+                        ? "border-accent bg-surface"
+                        : "border-edge bg-surface-2 hover:border-white/25"
+                    }`}
                   >
-                    <option value="quick_screen" className="bg-neutral-900">
-                      Quick Screen
-                    </option>
-                    <option value="full_calibration" className="bg-neutral-900">
-                      Full Calibration
-                    </option>
-                  </select>
-                </div>
+                    <div className="font-medium text-ink">{c.full_name}</div>
+                    {c.role && <div className="text-xs text-ink-muted">{c.role}</div>}
+                  </button>
+                ))}
+                {candidates.length === 0 && (
+                  <p className="text-sm text-ink-muted">Кандидатов пока нет.</p>
+                )}
+              </div>
+            </aside>
 
-                <div className="mt-4 space-y-3">
-                  {activeSignals.map((s) => (
-                    <div key={s.key} className="rounded-lg border border-white/10 p-3">
-                      <div className="text-sm font-medium" title={s.question}>
-                        {s.label}
-                        <span className="ml-1 text-xs opacity-40">{s.label_en}</span>
-                      </div>
-                      <div className="mt-1 text-xs opacity-50">{s.question}</div>
-                      <div className="mt-2 flex gap-2">
-                        {RISK_LEVELS.map((lvl) => (
-                          <button
-                            type="button"
-                            key={lvl}
-                            title={
-                              lvl === "low" ? s.legend_low : lvl === "medium" ? s.legend_medium : s.legend_high
-                            }
-                            onClick={() => setSignals({ ...signals, [s.key]: lvl })}
-                            className={`rounded-lg border px-3 py-1 text-xs ${
-                              signals[s.key] === lvl
-                                ? RISK_BTN[lvl]
-                                : "border-white/10 bg-white/5 opacity-70 hover:opacity-100"
-                            }`}
-                          >
-                            {RISK_RU[lvl]}
-                          </button>
+            {/* Detail */}
+            <section>
+              {!detail ? (
+                <EmptyState title="Кандидат не выбран" text="Выберите или добавьте кандидата слева." />
+              ) : (
+                <div className="space-y-8">
+                  <div>
+                    <h2 className="text-xl font-semibold text-ink">{detail.candidate.full_name}</h2>
+                    {detail.candidate.role && (
+                      <div className="text-sm text-ink-muted">{detail.candidate.role}</div>
+                    )}
+                  </div>
+
+                  {/* Past assessments */}
+                  <div>
+                    <SectionHeader title="Оценки" />
+                    {detail.assessments.length > 0 ? (
+                      <div className="space-y-2">
+                        {detail.assessments.map((a) => (
+                          <Card key={a.id} variant="inset" className="px-4 py-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-ink">
+                                {a.type === "quick_screen" ? "Quick Screen" : "Full Calibration"}
+                              </span>
+                              <span className="flex items-center gap-3 text-xs text-ink-muted">
+                                {a.overall_risk && (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className={`h-2 w-2 rounded-full ${OVERALL_DOT[a.overall_risk]}`} />
+                                    {a.overall_risk}
+                                  </span>
+                                )}
+                                {a.suggested_overall_risk && (
+                                  <span className="text-ink-faint">подсказка: {a.suggested_overall_risk}</span>
+                                )}
+                                <span>{a.reviewer_name}</span>
+                              </span>
+                            </div>
+                            {a.recommendation && <div className="mt-1 text-sm text-ink">{a.recommendation}</div>}
+                            {a.signals && (
+                              <div className="mt-2 flex flex-wrap gap-1 text-xs text-ink-muted">
+                                {Object.entries(a.signals).map(([k, v]) => (
+                                  <span key={k} className="rounded border border-edge px-1.5 py-0.5">
+                                    {k}: {RISK_RU[v]}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </Card>
                         ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="text-xs opacity-60">Общий риск</span>
-                    <select
-                      value={overall}
-                      onChange={(e) => setOverall(e.target.value as OverallRisk | "")}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none"
-                    >
-                      <option value="" className="bg-neutral-900">— не указан —</option>
-                      <option value="green" className="bg-neutral-900">Зелёный — рекомендуется</option>
-                      <option value="yellow" className="bg-neutral-900">Жёлтый — условно</option>
-                      <option value="red" className="bg-neutral-900">Красный — под надзором</option>
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-xs opacity-60">Источник данных</span>
-                    <input
-                      value={source}
-                      onChange={(e) => setSource(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-                </div>
-                <label className="mt-3 block">
-                  <span className="text-xs opacity-60">Рекомендация</span>
-                  <input
-                    value={recommendation}
-                    onChange={(e) => setRecommendation(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none"
-                  />
-                </label>
-                <label className="mt-3 block">
-                  <span className="text-xs opacity-60">Действия</span>
-                  <textarea
-                    value={actionItems}
-                    onChange={(e) => setActionItems(e.target.value)}
-                    rows={2}
-                    className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none"
-                  />
-                </label>
-                <button className="mt-4 rounded-lg bg-white/90 px-5 py-2 text-sm font-medium text-black">
-                  Сохранить оценку
-                </button>
-              </form>
-
-              {/* Development plans */}
-              <div>
-                <h3 className="text-lg font-medium">План развития</h3>
-                {detail.development_plans.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {detail.development_plans.map((p) => (
-                      <div key={p.id} className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm">
-                        <div className="font-medium">{p.risk_area || "—"}</div>
-                        {p.suggested_support && (
-                          <div className="mt-1 text-xs opacity-70">{p.suggested_support}</div>
-                        )}
-                      </div>
-                    ))}
+                    ) : (
+                      <EmptyState title="Оценок ещё нет" />
+                    )}
                   </div>
-                )}
-                <form onSubmit={onSaveDevPlan} className="mt-3 flex flex-wrap gap-2">
-                  <input
-                    value={dpArea}
-                    onChange={(e) => setDpArea(e.target.value)}
-                    placeholder="Зона риска"
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40"
-                  />
-                  <input
-                    value={dpSupport}
-                    onChange={(e) => setDpSupport(e.target.value)}
-                    placeholder="Поддержка"
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none placeholder:opacity-40"
-                  />
-                  <button className="rounded-lg border border-white/15 px-4 py-2 text-sm font-medium hover:bg-white/5">
-                    Добавить
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
-        </section>
-      </div>
 
-      {ref && <p className="mt-10 text-xs opacity-50">{ref.disclaimer}</p>}
+                  {/* New assessment */}
+                  <Card>
+                    <form onSubmit={onSaveAssessment}>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-ink">Новая оценка</h3>
+                        <Select
+                          value={assType}
+                          onChange={(e) => setAssType(e.target.value as typeof assType)}
+                          className="w-auto px-3 py-1.5"
+                        >
+                          <option value="quick_screen" className="bg-neutral-900">
+                            Quick Screen
+                          </option>
+                          <option value="full_calibration" className="bg-neutral-900">
+                            Full Calibration
+                          </option>
+                        </Select>
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        {activeSignals.map((s) => (
+                          <div key={s.key} className="rounded-control border border-edge-2 p-3">
+                            <div className="text-sm font-medium text-ink" title={s.question}>
+                              {s.label}
+                              <span className="ml-1 text-xs text-ink-faint">{s.label_en}</span>
+                            </div>
+                            <div className="mt-1 text-xs text-ink-muted">{s.question}</div>
+                            <div className="mt-2 flex gap-2">
+                              {RISK_LEVELS.map((lvl) => (
+                                <button
+                                  type="button"
+                                  key={lvl}
+                                  title={
+                                    lvl === "low"
+                                      ? s.legend_low
+                                      : lvl === "medium"
+                                        ? s.legend_medium
+                                        : s.legend_high
+                                  }
+                                  onClick={() => setSignals({ ...signals, [s.key]: lvl })}
+                                  className={`rounded-control border px-3 py-1 text-xs transition-colors ${
+                                    signals[s.key] === lvl
+                                      ? RISK_BTN[lvl]
+                                      : "border-edge bg-surface-2 text-ink-muted hover:border-white/30"
+                                  }`}
+                                >
+                                  {RISK_RU[lvl]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Field label="Общий риск">
+                          <Select value={overall} onChange={(e) => setOverall(e.target.value as OverallRisk | "")}>
+                            <option value="" className="bg-neutral-900">
+                              — не указан —
+                            </option>
+                            <option value="green" className="bg-neutral-900">
+                              Зелёный — рекомендуется
+                            </option>
+                            <option value="yellow" className="bg-neutral-900">
+                              Жёлтый — условно
+                            </option>
+                            <option value="red" className="bg-neutral-900">
+                              Красный — под надзором
+                            </option>
+                          </Select>
+                        </Field>
+                        <Field label="Источник данных">
+                          <Input value={source} onChange={(e) => setSource(e.target.value)} />
+                        </Field>
+                      </div>
+                      <div className="mt-3">
+                        <Field label="Рекомендация">
+                          <Input value={recommendation} onChange={(e) => setRecommendation(e.target.value)} />
+                        </Field>
+                      </div>
+                      <div className="mt-3">
+                        <Field label="Действия">
+                          <Textarea value={actionItems} onChange={(e) => setActionItems(e.target.value)} rows={2} />
+                        </Field>
+                      </div>
+                      <Button type="submit" className="mt-4">
+                        Сохранить оценку
+                      </Button>
+                    </form>
+                  </Card>
+
+                  {/* Development plans */}
+                  <div>
+                    <SectionHeader title="План развития" />
+                    {detail.development_plans.length > 0 && (
+                      <div className="mb-3 space-y-2">
+                        {detail.development_plans.map((p) => (
+                          <Card key={p.id} variant="inset" className="px-4 py-3 text-sm">
+                            <div className="font-medium text-ink">{p.risk_area || "—"}</div>
+                            {p.suggested_support && (
+                              <div className="mt-1 text-xs text-ink-muted">{p.suggested_support}</div>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                    <form onSubmit={onSaveDevPlan} className="flex flex-wrap gap-2">
+                      <Input
+                        value={dpArea}
+                        onChange={(e) => setDpArea(e.target.value)}
+                        placeholder="Зона риска"
+                        className="flex-1"
+                      />
+                      <Input
+                        value={dpSupport}
+                        onChange={(e) => setDpSupport(e.target.value)}
+                        placeholder="Поддержка"
+                        className="flex-1"
+                      />
+                      <Button type="submit" variant="ghost">
+                        Добавить
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+        </>
+      )}
+
+      {ref && <Disclaimer className="mt-10">{ref.disclaimer}</Disclaimer>}
     </main>
   );
 }
