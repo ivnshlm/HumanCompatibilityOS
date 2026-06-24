@@ -24,15 +24,52 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Create tables. MVP-only: replaced by Alembic migrations later."""
-    # Import models so they register on Base.metadata before create_all.
+    """Bring the schema up to date via Alembic, then seed bootstrap admins.
+
+    Alembic migrations are the single source of truth for the schema. On a
+    pre-Alembic database (tables created by the old create_all path) the schema
+    already matches the initial revision, so `run_migrations` stamps the
+    baseline instead of re-running it; a fresh database is upgraded to head.
+    """
+    # Import models so they register on Base.metadata for the migration env.
     from app import models  # noqa: F401
     from app.question_bank import validate_bank
 
     validate_bank()  # fail fast if the question bank resource is malformed
     _migrate_to_question_bank()
-    Base.metadata.create_all(bind=engine)
+    run_migrations()
     bootstrap_admins()
+
+
+def _alembic_config():
+    from pathlib import Path
+
+    from alembic.config import Config
+
+    cfg = Config()
+    # backend/alembic lives one level up from this file (app/db.py).
+    cfg.set_main_option("script_location", str(Path(__file__).resolve().parent.parent / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    return cfg
+
+
+def run_migrations() -> None:
+    """Apply Alembic migrations, adopting the baseline on a pre-Alembic DB.
+
+    - ``alembic_version`` present  -> upgrade to head (apply pending revisions).
+    - no ``alembic_version`` but the schema already exists (legacy create_all
+      deploy) -> stamp the initial revision, so future migrations apply without
+      trying to recreate existing tables.
+    - empty database               -> upgrade to head builds the whole schema.
+    """
+    from alembic import command
+
+    tables = set(inspect(engine).get_table_names())
+    cfg = _alembic_config()
+    if "alembic_version" not in tables and "users" in tables:
+        command.stamp(cfg, "head")
+    else:
+        command.upgrade(cfg, "head")
 
 
 def _migrate_to_question_bank() -> None:

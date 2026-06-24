@@ -28,7 +28,7 @@ logging.basicConfig(level=settings.log_level)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # MVP: create tables on startup. Replaced by Alembic migrations later.
+    # Apply Alembic migrations (or adopt the baseline) and seed bootstrap admins.
     init_db()
     yield
 
