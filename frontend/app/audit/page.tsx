@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { fetchAudit, fetchMe, getToken, type AuditEntry } from "@/lib/api";
-import { EmptyState, Table, TD, TH, THead, TR } from "@/components/ui";
+import { EmptyState, PageSkeleton, Table, TD, TH, THead, TR } from "@/components/ui";
 
 const OVERSIGHT_ROLES = new Set(["admin", "ethics_reviewer"]);
 
@@ -36,7 +36,7 @@ export default function AuditPage() {
   }, [router]);
 
   if (allowed === null) {
-    return <main className="mx-auto max-w-4xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="4xl" />;
   }
 
   return (

@@ -25,6 +25,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageSkeleton,
   SectionHeader,
   Select,
   Textarea,
@@ -150,7 +151,7 @@ export default function HiringPage() {
   }
 
   if (allowed === null) {
-    return <main className="mx-auto max-w-6xl px-6 py-16 text-sm text-ink-muted">Загрузка…</main>;
+    return <PageSkeleton width="6xl" />;
   }
 
   return (
