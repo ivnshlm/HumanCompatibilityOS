@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { login, setToken } from "@/lib/api";
+import { Button, Card, Field, Input } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,43 +29,39 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-16">
-      <h1 className="text-2xl font-semibold">Вход</h1>
-      <p className="mt-2 text-sm opacity-70">Human Compatibility OS</p>
+    <main className="mx-auto max-w-md px-6 py-20">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.09em] text-ink-faint">
+        Human Compatibility OS
+      </div>
+      <h1 className="mt-1 text-3xl font-semibold text-ink">Вход</h1>
+      <p className="mt-2 text-sm text-ink-muted">Среда важнее героизма.</p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-4">
-        <label className="block">
-          <span className="text-sm opacity-70">Email</span>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/30"
-          />
-        </label>
+      <Card className="mt-6">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <Field label="Email">
+            <Input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+          <Field label="Пароль">
+            <Input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
 
-        <label className="block">
-          <span className="text-sm opacity-70">Пароль</span>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-white/30"
-          />
-        </label>
+          {error && <p className="text-sm text-orange-400">{error}</p>}
 
-        {error && <p className="text-sm text-orange-400">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-lg bg-white/90 px-4 py-2 text-sm font-medium text-black disabled:opacity-50"
-        >
-          {busy ? "Вход…" : "Войти"}
-        </button>
-      </form>
+          <Button type="submit" disabled={busy} className="w-full">
+            {busy ? "Вход…" : "Войти"}
+          </Button>
+        </form>
+      </Card>
     </main>
   );
 }
